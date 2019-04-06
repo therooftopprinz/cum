@@ -1,5 +1,5 @@
 # CUM
-Common Universal Messaging is a formal notation used for describing data transmitted in general communication.
+Common Universal Messaging is a formal notation used for describing data format for general communication.
 
 ## Syntax
 #### Constants
