@@ -55,7 +55,7 @@ Compiles **cum** to:
 * Wireshark dissector (planned) <br/>
 
 ## Example 1
-sample.meta
+sample2.meta
 ```cpp
 Type String
 {
@@ -111,7 +111,7 @@ Sequence PhoneBook
 
 ```
 
-generated cpp:
+generated c++:
 ```cpp
 #ifndef __sample2.meta_HPP__
 #define __sample2.meta_HPP__
