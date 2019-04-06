@@ -1,0 +1,51 @@
+Type String
+{
+    type(asciiz)
+};
+
+Type OptionalString
+{
+    type(String) optional()
+};
+
+Type PhoneNumber
+{
+    type(unsigned) width(8) dynamic_array(15)
+};
+
+Type PhoneNumberArray
+{
+    type(PhoneNumber) width(8) dynamic_array()
+};
+
+Sequence PersonalPhoneEntry
+{
+    String         firstName,
+    OptionalString middleName,
+    String         lastName,
+    String         address,
+    PhoneNumberArray phoneNumbers
+};
+
+Sequence CorporatePhoneEntry
+{
+    String      businessName,
+    String      address,
+    PhoneNumberArray phoneNumbers
+};
+
+Choice PhoneEntry
+{
+    PersonalPhoneEntry,
+    CorporatePhoneEntry
+};
+
+Type PhoneEntryArray
+{
+    type(PhoneEntry) dynamic_array()
+};
+
+Sequence PhoneBook
+{
+    PhoneEntryArray phoneEntryArray
+};

@@ -1,0 +1,73 @@
+Enumeration Cause
+{
+    Ok
+};
+
+Constant MAX_REQUEST_SIZE {16};
+Constant MAX_VALUE_SIZE {64};
+
+Type Key
+{
+    type(unsigned) width(8) min(1) max(255)
+};
+
+Type KeyArray
+{
+    type(key) dynamic_array(MAX_REQUEST_SIZE)
+};
+
+Type TrId
+{
+    type(unsigned) optional() min(0) max(255)
+};
+
+Type OctetString
+{
+    type(unsigned) width(8) dynamic_array(MAX_VALUE_SIZE)
+};
+
+Sequence KeyValue
+{
+    Key key,
+    OctetString value
+};
+
+Type KeyValueArray
+{
+    type(KeyValue) dynamic_array(MAX_REQUEST_SIZE)
+}
+
+Sequence SetRequest
+{
+    KeyValueArray data
+};
+
+Sequence SetResponse
+{
+    Cause cause
+};
+
+Sequence GetRequest
+{
+    KeyArray data
+};
+
+Sequence GetResponse
+{
+    KeyValueArray data
+};
+
+Choice PDU_Messages
+{
+    SetRequest,
+    SetResponse,
+    GetRequest,
+    GetResponse
+};
+
+Sequence PDU
+{
+    TrId trId,
+    PDU_Messages message
+};
+Generate {PDU};
