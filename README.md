@@ -176,7 +176,6 @@ void decode(PersonalPhoneEntry& pData, cum::codec_ctx& pCtx)
 void encode(const CorporatePhoneEntry& pData, cum::codec_ctx& pCtx)
 {
     using namespace cum;
-    // noptionals = 0
     encode(pIe.businessName, pCtx);
     encode(pIe.address, pCtx);
     encode(pIe.phoneNumbers, pCtx);
