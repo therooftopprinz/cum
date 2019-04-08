@@ -10,7 +10,7 @@ Type OptionalString
 
 Type PhoneNumber
 {
-    type(unsigned) width(8) dynamic_array(15)
+    type(char) dynamic_array(15)
 };
 
 Type PhoneNumberArray

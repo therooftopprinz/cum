@@ -1,9 +1,12 @@
 #ifndef __CUM_HPP__
 #define __CUM_HPP__
 
-#include <exception>
+#include <stdexcept>
+#include <variant>
+#include <cstddef>
 #include <cstring>
 #include <string>
+#include <vector>
 
 namespace cum
 {
@@ -26,20 +29,17 @@ public:
     template <typename... U>
     void emplace_back(U&&... pArgs)
     {
-        new (mData+mSize) T(std::forward<U>(pArgs)...);
-        mSize++;
+        new (mData+mSize++) T(std::forward<U>(pArgs)...);
     }
 
     void push_back(T&& pOther)
     {
-        new (mData+mSize) std::move(pOther);
-        mSize++;
+        new (mData+mSize++) T(std::move(pOther));
     }
 
     void pop_back()
     {
-        mData[mSize-1].~T();
-        mSize--;
+        mData[--mSize].~T();
     }
 
     T* data()
@@ -59,13 +59,13 @@ public:
 
     T& operator[](size_t pIndex)
     {
-        return nData[pIndex];
+        return mData[pIndex];
     }
 
     T& at(size_t pIndex)
     {
         checkBounds(pIndex);
-        return nData[pIndex];
+        return mData[pIndex];
     }
 
     T* begin()
@@ -74,6 +74,16 @@ public:
     }
 
     T* end()
+    {
+        return mData+mSize;
+    }
+
+    const T* begin() const
+    {
+        return mData;
+    }
+
+    const T* end() const
     {
         return mData+mSize;
     }
@@ -95,13 +105,13 @@ public:
 
     const T& operator[](size_t pIndex) const
     {
-        return nData[pIndex];
+        return mData[pIndex];
     }
 
     const T& at(size_t pIndex) const
     {
         checkBounds(pIndex);
-        return nData[pIndex];
+        return mData[pIndex];
     }
 
     size_t size() const
@@ -127,7 +137,7 @@ private:
                 " index=" + std::to_string(pIndex));
     }
     T mData[N];
-    size_t mSize;
+    size_t mSize = 0;
 };
 
 class codec_ctx
@@ -147,7 +157,7 @@ public:
     void advance(size_t pSize)
     {
         mData += pSize;
-        mSize -= mSize;
+        mSize -= pSize;
     }
 
     size_t size() const
@@ -161,100 +171,200 @@ private:
 };
 
 template <typename T>
-void encode(const T pIe, pCtx)
+void encode(const T pIe, codec_ctx& pCtx)
 {
     if (sizeof(pIe) > pCtx.size())
-        throw std::out_of_range();
-    new (pCtx.data()) decltype(pIe)(pIe);
+        throw std::out_of_range(__PRETTY_FUNCTION__);
+    new (pCtx.get()) decltype(pIe)(pIe);
     pCtx.advance(sizeof(pIe));
 }
 
 template <typename T>
-void decode(T& pIe, pCtx)
+void decode(T& pIe, codec_ctx& pCtx)
 {
     if (sizeof(pIe) > pCtx.size())
-        throw std::out_of_range();
-    std::memcpy(pCtx.data(), sizeof(pIe));
+        throw std::out_of_range(__PRETTY_FUNCTION__);
+    std::memcpy(&pIe, pCtx.get(), sizeof(pIe));
     pCtx.advance(sizeof(pIe));
 }
 
 template <typename T>
-void encode(const std::vector<T>& pIe, pCtx)
+void str(const char* pName, const T& pIe, std::string& pCtx, bool isLast)
+{
+    if (!pName)
+    {
+        pCtx = pCtx + "\"" + std::to_string(pIe) + "\"";
+    }
+    else
+    {
+        pCtx = pCtx + pName + ":\"" + std::to_string(pIe) + "\"";
+    }
+
+    if (!isLast)
+    {
+        pCtx += ",";
+    }
+}
+
+void encode(const std::string& pIe, codec_ctx& pCtx)
+{
+    const size_t strsz = pIe.size()+1;
+    if (strsz > pCtx.size())
+        throw std::out_of_range(__PRETTY_FUNCTION__);
+    std::memcpy(pCtx.get(), pIe.data(), strsz);
+    pCtx.advance(strsz);
+}
+
+void decode(std::string& pIe, codec_ctx& pCtx)
+{
+    // TODO: safer pls
+    pIe = (const char*)pCtx.get();
+    const size_t strsz = pIe.size()+1;
+    if (strsz > pCtx.size())
+        throw std::out_of_range(__PRETTY_FUNCTION__);
+    pCtx.advance(strsz);
+}
+
+void str(const char* pName, const std::string& pIe, std::string& pCtx, bool isLast)
+{
+    if (!pName)
+    {
+        pCtx = pCtx + "\"" + pIe + "\"";
+    }
+    else
+    {
+        pCtx = pCtx + pName + ":\"" + pIe + "\"";
+    }
+
+    if (!isLast)
+    {
+        pCtx += ",";
+    }
+}
+
+template <typename T>
+void encode(const std::vector<T>& pIe, codec_ctx& pCtx)
 {
     using IndexType = uint32_t;
     if (sizeof(IndexType) > pCtx.size())
-        throw std::out_of_range();
+        throw std::out_of_range(__PRETTY_FUNCTION__);
     encode(IndexType(pIe.size()), pCtx);
     for (auto& i : pIe)
+    {
         encode(i, pCtx);
+    }
 }
 
 template <typename T>
-void decode(std::vector<T>& pIe, pCtx)
+void decode(std::vector<T>& pIe, codec_ctx& pCtx)
 {
     using IndexType = uint32_t;
     if (sizeof(IndexType) > pCtx.size())
-        throw std::out_of_range();
+    {
+        throw std::out_of_range(__PRETTY_FUNCTION__);
+    }
     IndexType size;
     decode(size, pCtx);
     for (IndexType i=0; i<size; i++)
     {
-        pIe.push_back();
+        pIe.emplace_back();
+        decode(pIe.back(), pCtx);
+    }
+}
+
+template <typename T>
+void str(const char* pName, const std::vector<T>& pIe, std::string& pCtx, bool pIsLast)
+{
+    if (!pName)
+    {
+        pCtx = pCtx + "[";
+    }
+    else
+    {
+        pCtx = pCtx + pName + ":[";
+    }
+    for (size_t i=0; i<pIe.size();i++)
+    {
+        str(nullptr, pIe[i], pCtx, (i>=pIe.size()-1) ? true : false);
+    }
+    pCtx += "]";
+    if (!pIsLast)
+    {
+        pCtx += ",";
+    }
+}
+
+
+template <typename T, size_t N>
+void encode(const cum::vector<T, N>& pIe, codec_ctx& pCtx)
+{
+    // TODO: Base IndexType on N
+    using IndexType = uint32_t;
+    if (sizeof(IndexType) > pCtx.size())
+    {
+        throw std::out_of_range(__PRETTY_FUNCTION__);
+    }
+    encode(IndexType(pIe.size()), pCtx);
+    for (const auto& i : pIe)
+    {
+        encode(i, pCtx);
+    }
+}
+
+template <typename T, size_t N>
+void decode(cum::vector<T, N>& pIe, codec_ctx& pCtx)
+{
+    // TODO: Base IndexType on N
+    using IndexType = uint32_t;
+    if (sizeof(IndexType) > pCtx.size())
+    {
+        throw std::out_of_range(__PRETTY_FUNCTION__);
+    }
+    IndexType size;
+    decode(size, pCtx);
+    for (IndexType i=0; i<size; i++)
+    {
+        pIe.emplace_back();
         decode(pIe.back(), pCtx);
     }
 }
 
 template <typename T, size_t N>
-void encode(const cum::vector<T, N>& pIe, pCtx)
+void str(const char* pName, const cum::vector<T, N>& pIe, std::string& pCtx, bool pIsLast)
 {
-    // TODO: Base IndexType on N
-    using IndexType = uint32_t;
-    if (sizeof(IndexType) > pCtx.size())
-        throw std::out_of_range();
-    encode(IndexType(pIe.size()), pCtx);
-    for (auto& i : pIe)
-        encode(i, pCtx);
-}
-
-template <typename T, size_t N>
-void decode(cum::vector<T, N>& pIe, pCtx)
-{
-    // TODO: Base IndexType on N
-    using IndexType = uint32_t;
-    if (sizeof(IndexType) > pCtx.size())
-        throw std::out_of_range();
-    IndexType size;
-    decode(size, pCtx);
-    for (IndexType i=0; i<size; i++)
+    if (!pName)
     {
-        pIe.push_back();
-        decode(pIe.back(), pCtx);
+        pCtx = pCtx + "[";
+    }
+    else
+    {
+        pCtx = pCtx + pName + ":[";
+    }
+    for (size_t i=0; i<pIe.size();i++)
+    {
+        str(nullptr, pIe[i], pCtx, (i>=pIe.size()-1) ? true : false);
+    }
+    pCtx += "]";
+    if (!pIsLast)
+    {
+        pCtx += ",";
     }
 }
 
-void check_optional(uint8_t *pOptionalMask, size_t n)
+
+bool check_optional(uint8_t *pOptionalMask, size_t n)
 {
-    return false;
+    size_t opos = n >> 3;
+    size_t bpos = n & 7;
+    return pOptionalMask[opos] & (1 << bpos);
 }
 
-// template <typename... Ts>
-// void encode(const std::variant:<Ts...>& pIe, pCtx)
-// {
-//     // TODO: Base TypeIndex on N
-//     using TypeIndex = uint32_t;
-//     TypeIndex type = pIe.index();
-//     encode(type, pCtx);
-//     std::visit([&pCtx](auto&& pIe){encode(pIe, pCtx);}, pIe);
-// }
+void set_optional(uint8_t *pOptionalMask, size_t n)
+{
+    size_t opos = n >> 3;
+    size_t bpos = n & 7;
+    pOptionalMask[opos] |= (1 << bpos);
+}
 
-// template <typename... Ts>
-// void decode(std::variant<Ts...>& pIe, pCtx)
-// {
-//     // TODO: Base TypeIndex on N
-//     using TypeIndex = uint32_t;
-//     TypeIndex type;
-//     // decide(type, pCtx);
-//     // std::visit([&pCtx ](auto&& pIe){encode(pIe, pCtx);}, pIe);
-// }
-
-#endif __CUM_HPP__
+} // namespace cum
+#endif // __CUM_HPP__
