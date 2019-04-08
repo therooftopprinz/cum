@@ -8,6 +8,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <initializer_list>
 
 namespace cum
 {
@@ -44,8 +45,15 @@ template <typename T, size_t N>
 class preallocated_vector
 {
 public:
-    preallocated_vector()
-    {}
+    preallocated_vector() = default;
+
+    preallocated_vector(std::initializer_list<T> pList)
+    {
+        for (auto&& i : pList)
+        {
+            emplace_back(std::move(i));
+        }
+    }
 
     ~preallocated_vector()
     {

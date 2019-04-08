@@ -28,21 +28,8 @@ int main()
         phoneEntry.lastName = "1.last";
         phoneEntry.address = "1.address";
 
-        {
-            phoneEntry.phoneNumbers.emplace_back();
-            auto& pn = phoneEntry.phoneNumbers.back();
-            pn.push_back('+');
-            pn.push_back('6');
-            pn.push_back('3');
-            pn.push_back('9');
-        }
-        {
-            phoneEntry.phoneNumbers.emplace_back();
-            auto& pn = phoneEntry.phoneNumbers.back();
-            pn.push_back('+');
-            pn.push_back('4');
-            pn.push_back('4');
-        }
+        phoneEntry.phoneNumbers.emplace_back(std::initializer_list<char>({'+','6','3','9'}));
+        phoneEntry.phoneNumbers.emplace_back(std::initializer_list<char>({'+','4','4'}));
     }
 
     {
