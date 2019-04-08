@@ -152,8 +152,10 @@ class CppGenerator:
 
         noptionals = 0
         for i in cs:
-            if "optional" in self.type_[i[0]]:
-                noptionals += 1
+            fieldt = i[0]
+            if  fieldt in self.type_:
+                if "optional" in self.type_[i[0]]:
+                    noptionals += 1
         optionalmasksz = int(math.ceil(noptionals*1.0/8))
         if optionalmasksz > 0:
             print "    uint8_t *optionalmask = new(pCtx.get()) uint8_t[" + str(optionalmasksz) + "]{};"
@@ -161,12 +163,14 @@ class CppGenerator:
         j = 0
         for i in cs:
             field = "pIe." + i[1]
-            if "optional" in self.type_[i[0]]:
-                print "    if (" + field +")"
-                print "    {"
-                print "        set_optional(optionalmask, " + str(j) + ");"
-                print "        encode(*" + field + ", pCtx);"
-                print "    }"
+            fieldt = i[0]
+            if  fieldt in self.type_:
+                if "optional" in self.type_[fieldt]:
+                    print "    if (" + field +")"
+                    print "    {"
+                    print "        set_optional(optionalmask, " + str(j) + ");"
+                    print "        encode(*" + field + ", pCtx);"
+                    print "    }"
             else:
                 print "    encode(" + field + ", pCtx);"
         print "}\n"
@@ -178,8 +182,10 @@ class CppGenerator:
 
         noptionals = 0
         for i in cs:
-            if "optional" in self.type_[i[0]]:
-                noptionals += 1
+            fieldt = i[0]
+            if  fieldt in self.type_:
+                if "optional" in self.type_[i[0]]:
+                    noptionals += 1
         optionalmasksz = int(math.ceil(noptionals*1.0/8))
         if optionalmasksz > 0:
             print "    uint8_t *optionalmask = (uint8_t*)pCtx.get();"
@@ -188,12 +194,15 @@ class CppGenerator:
         j = 0
         for i in cs:
             field = "pIe." + i[1]
-            if "optional" in self.type_[i[0]]:
-                print "    if (check_optional(optionalmask, "+str(j)+"))"
-                print "    {"
-                print "        " + field + " = decltype(" + field + ")::value_type{};"
-                print "        decode(*" + field + ", pCtx);"
-                print "    }"
+            fieldt = i[0]
+            if  fieldt in self.type_:
+                if "optional" in self.type_[i[0]]:
+                    print "    if (check_optional(optionalmask, "+str(j)+"))"
+                    print "    {"
+                    print "        " + field + " = decltype(" + field + ")::value_type{};"
+                    print "        decode(*" + field + ", pCtx);"
+                    print "    }"
+                    j += 1
             else:
                 print "    decode(" + field + ", pCtx);"
         print "}\n"
@@ -202,29 +211,32 @@ class CppGenerator:
         print "void str(const char* pName, const " + name + "& pIe, std::string& pCtx, bool pIsLast)"
         print "{"
         print "    using namespace cum;"
-        print "    if (!std::strlen(pName))"
+        print "    if (!pName)"
         print "    {"
         print "        pCtx = pCtx + \"{\";"
         print "    }"
         print "    else"
         print "    {"
-        print "        pCtx = pCtx + pName + \":{\";"
+        print "        pCtx = pCtx + \"\\\"\" + pName + \"\\\":{\";"
         print "    }"
 
         j = 0
         for i in cs:
             field = "pIe." + i[1]
+            fieldt = i[0]
             if j == len(cs)-1:
                 last = "true"
             else:
                 last = "false"
-            if "optional" in self.type_[i[0]]:
-                print "    if (" + field +")"
-                print "    {"
-                print "        str(\"" + i[1] + "\", *" + field + ", pCtx, " + last + ");"
-                print "    }"
+            if  fieldt in self.type_:
+                if "optional" in self.type_[fieldt]:
+                    print "    if (" + field +")"
+                    print "    {"
+                    print "        str(\"" + i[1] + "\", *" + field + ", pCtx, " + last + ");"
+                    print "    }"
             else:
-                print "        str(\"" + i[1] + "\", " + field + ", pCtx, " + last + ");"
+                print "    str(\"" + i[1] + "\", " + field + ", pCtx, " + last + ");"
+            j += 1
         print "    pCtx = pCtx + \"}\";"
         print "    if (!pIsLast)"
         print "    {"
@@ -296,7 +308,7 @@ class CppGenerator:
         print "    if (!pIsLast)"
         print "    {"
         print "        pCtx += \",\";"
-        print "    }"
+        print "    }"   
         print "}\n"
 
     def processSequenceCodec(self, name, data):

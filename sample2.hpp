@@ -83,22 +83,22 @@ void encode(const PersonalPhoneEntry& pIe, cum::codec_ctx& pCtx)
 void str(const char* pName, const PersonalPhoneEntry& pIe, std::string& pCtx, bool pIsLast)
 {
     using namespace cum;
-    if (!std::strlen(pName))
+    if (!pName)
     {
         pCtx = pCtx + "{";
     }
     else
     {
-        pCtx = pCtx + pName + ":{";
+        pCtx = pCtx + "\"" + pName + "\":{";
     }
-        str("firstName", pIe.firstName, pCtx, false);
+    str("firstName", pIe.firstName, pCtx, false);
     if (pIe.middleName)
     {
         str("middleName", *pIe.middleName, pCtx, false);
     }
-        str("lastName", pIe.lastName, pCtx, false);
-        str("address", pIe.address, pCtx, false);
-        str("phoneNumbers", pIe.phoneNumbers, pCtx, false);
+    str("lastName", pIe.lastName, pCtx, false);
+    str("address", pIe.address, pCtx, false);
+    str("phoneNumbers", pIe.phoneNumbers, pCtx, true);
     pCtx = pCtx + "}";
     if (!pIsLast)
     {
@@ -133,17 +133,17 @@ void encode(const CorporatePhoneEntry& pIe, cum::codec_ctx& pCtx)
 void str(const char* pName, const CorporatePhoneEntry& pIe, std::string& pCtx, bool pIsLast)
 {
     using namespace cum;
-    if (!std::strlen(pName))
+    if (!pName)
     {
         pCtx = pCtx + "{";
     }
     else
     {
-        pCtx = pCtx + pName + ":{";
+        pCtx = pCtx + "\"" + pName + "\":{";
     }
-        str("businessName", pIe.businessName, pCtx, false);
-        str("address", pIe.address, pCtx, false);
-        str("phoneNumbers", pIe.phoneNumbers, pCtx, false);
+    str("businessName", pIe.businessName, pCtx, false);
+    str("address", pIe.address, pCtx, false);
+    str("phoneNumbers", pIe.phoneNumbers, pCtx, true);
     pCtx = pCtx + "}";
     if (!pIsLast)
     {
@@ -221,15 +221,15 @@ void encode(const PhoneBook& pIe, cum::codec_ctx& pCtx)
 void str(const char* pName, const PhoneBook& pIe, std::string& pCtx, bool pIsLast)
 {
     using namespace cum;
-    if (!std::strlen(pName))
+    if (!pName)
     {
         pCtx = pCtx + "{";
     }
     else
     {
-        pCtx = pCtx + pName + ":{";
+        pCtx = pCtx + "\"" + pName + "\":{";
     }
-        str("phoneEntryArray", pIe.phoneEntryArray, pCtx, true);
+    str("phoneEntryArray", pIe.phoneEntryArray, pCtx, true);
     pCtx = pCtx + "}";
     if (!pIsLast)
     {

@@ -197,7 +197,7 @@ void str(const char* pName, const T& pIe, std::string& pCtx, bool isLast)
     }
     else
     {
-        pCtx = pCtx + pName + ":\"" + std::to_string(pIe) + "\"";
+        pCtx = pCtx + "\"" + pName + "\":\"" + std::to_string(pIe) + "\"";
     }
 
     if (!isLast)
@@ -233,7 +233,7 @@ void str(const char* pName, const std::string& pIe, std::string& pCtx, bool isLa
     }
     else
     {
-        pCtx = pCtx + pName + ":\"" + pIe + "\"";
+        pCtx = pCtx + "\"" + pName + "\":\"" + pIe + "\"";
     }
 
     if (!isLast)
@@ -281,7 +281,7 @@ void str(const char* pName, const std::vector<T>& pIe, std::string& pCtx, bool p
     }
     else
     {
-        pCtx = pCtx + pName + ":[";
+        pCtx = pCtx + "\"" + pName + "\":[";
     }
     for (size_t i=0; i<pIe.size();i++)
     {
@@ -338,7 +338,7 @@ void str(const char* pName, const cum::vector<T, N>& pIe, std::string& pCtx, boo
     }
     else
     {
-        pCtx = pCtx + pName + ":[";
+        pCtx = pCtx + "\"" + pName + "\":[";
     }
     for (size_t i=0; i<pIe.size();i++)
     {

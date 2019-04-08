@@ -68,7 +68,7 @@ int main()
         auto encodeSize = sizeof(buffer) - ctx.size();
         printBuffer(buffer, encodeSize);
         std::string out;
-        str("pb", pb, out, true);
+        str(nullptr, pb, out, true);
         std::cout << out << "\n";
     }
 
@@ -77,7 +77,7 @@ int main()
         cum::codec_ctx ctx(buffer, 1024);
         decode(pbDecoded, ctx);
         std::string out;
-        str("pbDecoded", pbDecoded, out, true);
+        str(nullptr, pbDecoded, out, true);
         std::cout << out << "\n";
     }
 
