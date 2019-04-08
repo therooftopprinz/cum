@@ -160,7 +160,6 @@ private:
     size_t mSize;
 };
 
-
 template <typename T>
 void encode(const T pIe, pCtx)
 {
@@ -232,5 +231,30 @@ void decode(cum::vector<T, N>& pIe, pCtx)
         decode(pIe.back(), pCtx);
     }
 }
+
+void check_optional(uint8_t *pOptionalMask, size_t n)
+{
+    return false;
+}
+
+// template <typename... Ts>
+// void encode(const std::variant:<Ts...>& pIe, pCtx)
+// {
+//     // TODO: Base TypeIndex on N
+//     using TypeIndex = uint32_t;
+//     TypeIndex type = pIe.index();
+//     encode(type, pCtx);
+//     std::visit([&pCtx](auto&& pIe){encode(pIe, pCtx);}, pIe);
+// }
+
+// template <typename... Ts>
+// void decode(std::variant<Ts...>& pIe, pCtx)
+// {
+//     // TODO: Base TypeIndex on N
+//     using TypeIndex = uint32_t;
+//     TypeIndex type;
+//     // decide(type, pCtx);
+//     // std::visit([&pCtx ](auto&& pIe){encode(pIe, pCtx);}, pIe);
+// }
 
 #endif __CUM_HPP__
