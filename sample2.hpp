@@ -3,9 +3,10 @@
 // Type:  ('OptionalString', {'optional': ''})
 // Type:  ('PhoneNumber', {'type': 'char'})
 // Type:  ('PhoneNumber', {'dynamic_array': '15'})
+// Type:  ('PhoneNumber', {'preallocate': ''})
 // Type:  ('PhoneNumberArray', {'type': 'PhoneNumber'})
 // Type:  ('PhoneNumberArray', {'width': '8'})
-// Type:  ('PhoneNumberArray', {'dynamic_array': ''})
+// Type:  ('PhoneNumberArray', {'dynamic_array': '32'})
 // Sequence:  PersonalPhoneEntry ('String', 'firstName')
 // Sequence:  PersonalPhoneEntry ('OptionalString', 'middleName')
 // Sequence:  PersonalPhoneEntry ('String', 'lastName')
@@ -33,8 +34,8 @@
 
 using String = std::string;
 using OptionalString = std::optional<String>;
-using PhoneNumber = cum::vector<char, 15>;
-using PhoneNumberArray = std::vector<PhoneNumber>;
+using PhoneNumber = cum::preallocated_vector<char, 15>;
+using PhoneNumberArray = cum::vector<PhoneNumber, 32>;
 struct PersonalPhoneEntry
 {
     String firstName;
@@ -52,7 +53,7 @@ struct CorporatePhoneEntry
 };
 
 using PhoneEntry = std::variant<PersonalPhoneEntry,CorporatePhoneEntry>;
-using PhoneEntryArray = std::vector<PhoneEntry>;
+using PhoneEntryArray = cum::vector<PhoneEntry, 4294967295>;
 struct PhoneBook
 {
     PhoneEntryArray phoneEntryArray;
@@ -64,20 +65,58 @@ struct PhoneBook
 /
 ************************************************/
 
-void encode(const PersonalPhoneEntry& pIe, cum::codec_ctx& pCtx)
+void encode_per(const PersonalPhoneEntry& pIe, cum::per_codec_ctx& pCtx)
 {
     using namespace cum;
-    uint8_t *optionalmask = new(pCtx.get()) uint8_t[1]{};
-    pCtx.advance(1);
-    encode(pIe.firstName, pCtx);
+    uint8_t optionalmask[1] = {};
     if (pIe.middleName)
     {
         set_optional(optionalmask, 0);
-        encode(*pIe.middleName, pCtx);
     }
-    encode(pIe.lastName, pCtx);
-    encode(pIe.address, pCtx);
-    encode(pIe.phoneNumbers, pCtx);
+    encode_per(optionalmask, sizeof(optionalmask), pCtx);
+    encode_per(pIe.firstName, pCtx);
+    if (pIe.middleName)
+    {
+        encode_per(*pIe.middleName, pCtx);
+    }
+    encode_per(pIe.lastName, pCtx);
+    encode_per(pIe.address, pCtx);
+    encode_per(pIe.phoneNumbers, pCtx);
+}
+
+/*void encode_uper(const PersonalPhoneEntry& pIe, cum::uper_codec_ctx& pCtx)
+{
+    using namespace cum;
+    uint8_t optionalmask[1] = {};
+    if (pIe.middleName)
+    {
+        set_optional(optionalmask, 0);
+    }
+    encode_uper(optionalmask, sizeof(optionalmask), pCtx);
+    encode_uper(pIe.firstName, pCtx);
+    if (pIe.middleName)
+    {
+        encode_uper(*pIe.middleName, pCtx);
+    }
+    encode_uper(pIe.lastName, pCtx);
+    encode_uper(pIe.address, pCtx);
+    encode_uper(pIe.phoneNumbers, pCtx);
+}*/
+
+void decode_per(PersonalPhoneEntry& pIe, cum::per_codec_ctx& pCtx)
+{
+    using namespace cum;
+    uint8_t optionalmask[1] = {};
+    decode_per(optionalmask, sizeof(optionalmask), pCtx);
+    decode_per(pIe.firstName, pCtx);
+    if (check_optional(optionalmask, 0))
+    {
+        pIe.middleName = decltype(pIe.middleName)::value_type{};
+        decode_per(*pIe.middleName, pCtx);
+    }
+    decode_per(pIe.lastName, pCtx);
+    decode_per(pIe.address, pCtx);
+    decode_per(pIe.phoneNumbers, pCtx);
 }
 
 void str(const char* pName, const PersonalPhoneEntry& pIe, std::string& pCtx, bool pIsLast)
@@ -106,28 +145,28 @@ void str(const char* pName, const PersonalPhoneEntry& pIe, std::string& pCtx, bo
     }
 }
 
-void decode(PersonalPhoneEntry& pIe, cum::codec_ctx& pCtx)
+void encode_per(const CorporatePhoneEntry& pIe, cum::per_codec_ctx& pCtx)
 {
     using namespace cum;
-    uint8_t *optionalmask = (uint8_t*)pCtx.get();
-    pCtx.advance(1);
-    decode(pIe.firstName, pCtx);
-    if (check_optional(optionalmask, 0))
-    {
-        pIe.middleName = decltype(pIe.middleName)::value_type{};
-        decode(*pIe.middleName, pCtx);
-    }
-    decode(pIe.lastName, pCtx);
-    decode(pIe.address, pCtx);
-    decode(pIe.phoneNumbers, pCtx);
+    encode_per(pIe.businessName, pCtx);
+    encode_per(pIe.address, pCtx);
+    encode_per(pIe.phoneNumbers, pCtx);
 }
 
-void encode(const CorporatePhoneEntry& pIe, cum::codec_ctx& pCtx)
+/*void encode_uper(const CorporatePhoneEntry& pIe, cum::uper_codec_ctx& pCtx)
 {
     using namespace cum;
-    encode(pIe.businessName, pCtx);
-    encode(pIe.address, pCtx);
-    encode(pIe.phoneNumbers, pCtx);
+    encode_uper(pIe.businessName, pCtx);
+    encode_uper(pIe.address, pCtx);
+    encode_uper(pIe.phoneNumbers, pCtx);
+}*/
+
+void decode_per(CorporatePhoneEntry& pIe, cum::per_codec_ctx& pCtx)
+{
+    using namespace cum;
+    decode_per(pIe.businessName, pCtx);
+    decode_per(pIe.address, pCtx);
+    decode_per(pIe.phoneNumbers, pCtx);
 }
 
 void str(const char* pName, const CorporatePhoneEntry& pIe, std::string& pCtx, bool pIsLast)
@@ -151,52 +190,44 @@ void str(const char* pName, const CorporatePhoneEntry& pIe, std::string& pCtx, b
     }
 }
 
-void decode(CorporatePhoneEntry& pIe, cum::codec_ctx& pCtx)
+void encode_per(const PhoneEntry& pIe, cum::per_codec_ctx& pCtx)
 {
     using namespace cum;
-    decode(pIe.businessName, pCtx);
-    decode(pIe.address, pCtx);
-    decode(pIe.phoneNumbers, pCtx);
-}
-
-void encode(const PhoneEntry& pIe, cum::codec_ctx& pCtx)
-{
-    using namespace cum;
-    using TypeIndex = uint32_t;
+    using TypeIndex = uint8_t;
     TypeIndex type = pIe.index();
-    encode(type, pCtx);
+    encode_per(type, pCtx);
     if (0 == type)
     {
-        encode(std::get<0>(pIe), pCtx);
+        encode_per(std::get<0>(pIe), pCtx);
     }
     else if (1 == type)
     {
-        encode(std::get<1>(pIe), pCtx);
+        encode_per(std::get<1>(pIe), pCtx);
     }
 }
 
-void decode(PhoneEntry& pIe, cum::codec_ctx& pCtx)
+void decode_per(PhoneEntry& pIe, cum::per_codec_ctx& pCtx)
 {
     using namespace cum;
-    using TypeIndex = uint32_t;
+    using TypeIndex = uint8_t;
     TypeIndex type;
-    decode(type, pCtx);
+    decode_per(type, pCtx);
     if (0 == type)
     {
         pIe = PersonalPhoneEntry{};
-        decode(std::get<0>(pIe), pCtx);
+        decode_per(std::get<0>(pIe), pCtx);
     }
     else if (1 == type)
     {
         pIe = CorporatePhoneEntry{};
-        decode(std::get<1>(pIe), pCtx);
+        decode_per(std::get<1>(pIe), pCtx);
     }
 }
 
 void str(const char* pName, const PhoneEntry& pIe, std::string& pCtx, bool pIsLast)
 {
     using namespace cum;
-    using TypeIndex = uint32_t;
+    using TypeIndex = uint8_t;
     TypeIndex type = pIe.index();
     if (0 == type)
     {
@@ -212,10 +243,22 @@ void str(const char* pName, const PhoneEntry& pIe, std::string& pCtx, bool pIsLa
     }
 }
 
-void encode(const PhoneBook& pIe, cum::codec_ctx& pCtx)
+void encode_per(const PhoneBook& pIe, cum::per_codec_ctx& pCtx)
 {
     using namespace cum;
-    encode(pIe.phoneEntryArray, pCtx);
+    encode_per(pIe.phoneEntryArray, pCtx);
+}
+
+/*void encode_uper(const PhoneBook& pIe, cum::uper_codec_ctx& pCtx)
+{
+    using namespace cum;
+    encode_uper(pIe.phoneEntryArray, pCtx);
+}*/
+
+void decode_per(PhoneBook& pIe, cum::per_codec_ctx& pCtx)
+{
+    using namespace cum;
+    decode_per(pIe.phoneEntryArray, pCtx);
 }
 
 void str(const char* pName, const PhoneBook& pIe, std::string& pCtx, bool pIsLast)
@@ -235,12 +278,6 @@ void str(const char* pName, const PhoneBook& pIe, std::string& pCtx, bool pIsLas
     {
         pCtx += ",";
     }
-}
-
-void decode(PhoneBook& pIe, cum::codec_ctx& pCtx)
-{
-    using namespace cum;
-    decode(pIe.phoneEntryArray, pCtx);
 }
 
 #endif //__CUM_MSG_HPP__

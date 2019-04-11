@@ -63,8 +63,8 @@ int main()
     std::byte buffer[1024];
 
     {
-        cum::codec_ctx ctx(buffer, 1024);
-        encode(pb, ctx);
+        cum::per_codec_ctx ctx(buffer, 1024);
+        encode_per(pb, ctx);
         auto encodeSize = sizeof(buffer) - ctx.size();
         printBuffer(buffer, encodeSize);
         std::string out;
@@ -74,12 +74,10 @@ int main()
 
     {
         PhoneBook pbDecoded;
-        cum::codec_ctx ctx(buffer, 1024);
-        decode(pbDecoded, ctx);
+        cum::per_codec_ctx ctx(buffer, 1024);
+        decode_per(pbDecoded, ctx);
         std::string out;
         str(nullptr, pbDecoded, out, true);
         std::cout << out << "\n";
     }
-
-
 }

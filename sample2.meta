@@ -10,12 +10,12 @@ Type OptionalString
 
 Type PhoneNumber
 {
-    type(char) dynamic_array(15)
+    type(char) dynamic_array(15) preallocate()
 };
 
 Type PhoneNumberArray
 {
-    type(PhoneNumber) width(8) dynamic_array()
+    type(PhoneNumber) width(8) dynamic_array(32)
 };
 
 Sequence PersonalPhoneEntry
