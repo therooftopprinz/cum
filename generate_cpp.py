@@ -52,6 +52,10 @@ class CppGenerator:
         print "{"
         j = 0
         for i in es:
+            if (i[1] is not None):
+                i = i[0] + " = " + i[1]
+            else:
+                i = i[0]
             if (j<len(es)-1):
                 print "    " + i + ", "
             else:
@@ -385,10 +389,8 @@ class CppGenerator:
         print "        pCtx = pCtx + \"\\\"\" + pName + \"\\\":\";"
         print "    }"
 
-        j = 0
         for i in es:
-            print "    if ("+ str(j) +" == static_cast<int64_t>(pIe)) pCtx += \"\\\"" + i + "\\\"\";"
-            j += 1
+            print "    if ("+ name + "::" + i[0] +" == pIe) pCtx += \"\\\"" + i[0] + "\\\"\";"
         print "    pCtx = pCtx + \"}\";"
         print "    if (!pIsLast)"
         print "    {"
@@ -481,6 +483,8 @@ class ExpressionParser:
         data = [i.strip() for i in data.split(",")]
         self.enum_[name] = []
         for i in data:
+            match = re.match(r"^(.*?)(?:\((.*?)\))*$", i)
+            i = (match.group(1), match.group(2))
             self.enum_[name].append(i)
             print "// Enumeration: ", (name, i)
 

@@ -1,3 +1,5 @@
+// Enumeration:  ('Gender', ('Male', '10'))
+// Enumeration:  ('Gender', ('Female', None))
 // Type:  ('String', {'type': 'asciiz'})
 // Type:  ('OptionalString', {'type': 'String'})
 // Type:  ('OptionalString', {'optional': ''})
@@ -11,6 +13,7 @@
 // Sequence:  PersonalPhoneEntry ('OptionalString', 'middleName')
 // Sequence:  PersonalPhoneEntry ('String', 'lastName')
 // Sequence:  PersonalPhoneEntry ('String', 'address')
+// Sequence:  PersonalPhoneEntry ('Gender', 'gender')
 // Sequence:  PersonalPhoneEntry ('PhoneNumberArray', 'phoneNumbers')
 // Sequence:  CorporatePhoneEntry ('String', 'businessName')
 // Sequence:  CorporatePhoneEntry ('String', 'address')
@@ -32,6 +35,11 @@
 /
 ************************************************/
 
+enum class Gender : uint8_t
+{
+    Male = 10, 
+    Female
+};
 using String = std::string;
 using OptionalString = std::optional<String>;
 using PhoneNumber = cum::preallocated_vector<char, 15>;
@@ -42,6 +50,7 @@ struct PersonalPhoneEntry
     OptionalString middleName;
     String lastName;
     String address;
+    Gender gender;
     PhoneNumberArray phoneNumbers;
 };
 
@@ -65,6 +74,22 @@ struct PhoneBook
 /
 ************************************************/
 
+void str(const char* pName, const Gender& pIe, std::string& pCtx, bool pIsLast)
+{
+    using namespace cum;
+    if (pName)
+    {
+        pCtx = pCtx + "\"" + pName + "\":";
+    }
+    if (Gender::Male == pIe) pCtx += "\"Male\"";
+    if (Gender::Female == pIe) pCtx += "\"Female\"";
+    pCtx = pCtx + "}";
+    if (!pIsLast)
+    {
+        pCtx += ",";
+    }
+}
+
 void encode_per(const PersonalPhoneEntry& pIe, cum::per_codec_ctx& pCtx)
 {
     using namespace cum;
@@ -81,6 +106,7 @@ void encode_per(const PersonalPhoneEntry& pIe, cum::per_codec_ctx& pCtx)
     }
     encode_per(pIe.lastName, pCtx);
     encode_per(pIe.address, pCtx);
+    encode_per(pIe.gender, pCtx);
     encode_per(pIe.phoneNumbers, pCtx);
 }
 
@@ -100,6 +126,7 @@ void encode_per(const PersonalPhoneEntry& pIe, cum::per_codec_ctx& pCtx)
     }
     encode_uper(pIe.lastName, pCtx);
     encode_uper(pIe.address, pCtx);
+    encode_uper(pIe.gender, pCtx);
     encode_uper(pIe.phoneNumbers, pCtx);
 }*/
 
@@ -116,6 +143,7 @@ void decode_per(PersonalPhoneEntry& pIe, cum::per_codec_ctx& pCtx)
     }
     decode_per(pIe.lastName, pCtx);
     decode_per(pIe.address, pCtx);
+    decode_per(pIe.gender, pCtx);
     decode_per(pIe.phoneNumbers, pCtx);
 }
 
@@ -137,6 +165,7 @@ void str(const char* pName, const PersonalPhoneEntry& pIe, std::string& pCtx, bo
     }
     str("lastName", pIe.lastName, pCtx, false);
     str("address", pIe.address, pCtx, false);
+    str("gender", pIe.gender, pCtx, false);
     str("phoneNumbers", pIe.phoneNumbers, pCtx, true);
     pCtx = pCtx + "}";
     if (!pIsLast)
