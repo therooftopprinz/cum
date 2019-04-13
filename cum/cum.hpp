@@ -8,7 +8,6 @@
 #include <cstring>
 #include <string>
 #include <vector>
-#include <initializer_list>
 
 namespace cum
 {
@@ -45,8 +44,6 @@ template <typename T, size_t N>
 class preallocated_vector
 {
 public:
-    preallocated_vector() = default;
-
     preallocated_vector(std::initializer_list<T> pList)
     {
         for (auto&& i : pList)
@@ -180,7 +177,7 @@ private:
 class per_codec_ctx
 {
 public:
-    enum class coder {compact, byte_aligned, aligned};
+    enum class coder {uper, per};
     per_codec_ctx(std::byte* pData, size_t pSize)
         : mData(pData)
         , mSize(pSize)

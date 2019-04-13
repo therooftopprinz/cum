@@ -47,6 +47,17 @@ int main()
         }
     }
 
+    {
+        pb.phoneEntryArray.emplace_back(PersonalPhoneEntry{});
+        auto& phoneEntry = std::get<PersonalPhoneEntry>(pb.phoneEntryArray.back());
+
+        phoneEntry.firstName = "2.first";
+        phoneEntry.lastName = "2.last";
+        phoneEntry.address = "2.address";
+
+        phoneEntry.phoneNumbers.emplace_back(std::initializer_list<char>({'+','4','2'}));
+    }
+
     std::byte buffer[1024];
 
     {
