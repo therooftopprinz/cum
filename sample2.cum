@@ -16,7 +16,7 @@ Type OptionalString
 
 Type PhoneNumber
 {
-    type(char) dynamic_array(15) preallocate()
+    type(char) dynamic_array(15)
 };
 
 Type PhoneNumberArray

@@ -12,168 +12,6 @@
 namespace cum
 {
 
-
-template <size_t N>
-struct GetTypeOfUnsigned
-{
-    using type = typename std::conditional<N<256, uint8_t,
-                    typename std::conditional<N<65536, uint16_t,
-                        typename std::conditional<N<4294967296, uint32_t,
-                            uint64_t
-                        >::type
-                    >::type
-                >::type;
-};
-
-template <ssize_t N>
-struct GetTypeOfSigned
-{
-    using type = typename std::conditional<N>=-128||N<125, int8_t,
-                    typename std::conditional<N>=-32768||N<32768, uint16_t,
-                        typename std::conditional<N>=-2147483648||N<2147483648, uint32_t,
-                            uint64_t
-                        >::type
-                    >::type
-                >::type;
-};
-
-template <typename T, size_t>
-struct vector : public std::vector<T> {};
-
-template <typename T, size_t N>
-class preallocated_vector
-{
-public:
-    preallocated_vector(std::initializer_list<T> pList)
-    {
-        for (auto&& i : pList)
-        {
-            emplace_back(std::move(i));
-        }
-    }
-
-    ~preallocated_vector()
-    {
-        for (size_t i = 0; i<mSize; i++)
-        {
-            pop_back();
-        }
-    }
-
-    template <typename... U>
-    void emplace_back(U&&... pArgs)
-    {
-        new (mData+mSize++) T(std::forward<U>(pArgs)...);
-    }
-
-    void push_back(T&& pOther)
-    {
-        new (mData+mSize++) T(std::move(pOther));
-    }
-
-    void pop_back()
-    {
-        mData[--mSize].~T();
-    }
-
-    T* data()
-    {
-        return mData;
-    }
-
-    T& front()
-    {
-        return mData[0];
-    }
-
-    T& back()
-    {
-        return mData[mSize-1];
-    }
-
-    T& operator[](size_t pIndex)
-    {
-        return mData[pIndex];
-    }
-
-    T& at(size_t pIndex)
-    {
-        checkBounds(pIndex);
-        return mData[pIndex];
-    }
-
-    T* begin()
-    {
-        return mData;
-    }
-
-    T* end()
-    {
-        return mData+mSize;
-    }
-
-    const T* begin() const
-    {
-        return mData;
-    }
-
-    const T* end() const
-    {
-        return mData+mSize;
-    }
-
-    const T* data() const
-    {
-        return mData;
-    }
-
-    const T& front() const
-    {
-        return mData[0];
-    }
-
-    const T& back() const
-    {
-        return mData[mSize-1];
-    }
-
-    const T& operator[](size_t pIndex) const
-    {
-        return mData[pIndex];
-    }
-
-    const T& at(size_t pIndex) const
-    {
-        checkBounds(pIndex);
-        return mData[pIndex];
-    }
-
-    size_t size() const
-    {
-        return mSize;
-    }
-
-    bool empty() const
-    {
-        return size() == 0;
-    }
-
-    size_t max_size() const
-    {
-        return N;
-    }
-private:
-    void checkBounds(size_t pIndex)
-    {
-        if (pIndex>=N)
-            throw std::out_of_range(std::string{} +
-                "accesing cum::preallocated_vector@" + std::to_string(uintptr_t(this)) +
-                " index=" + std::to_string(pIndex));
-    }
-    T mData[N];
-    size_t mSize = 0;
-};
-
 class per_codec_ctx
 {
 public:
@@ -309,92 +147,37 @@ void str(const char* pName, const std::string& pIe, std::string& pCtx, bool isLa
     }
 }
 
-template <typename T, size_t N>
-void encode_per(const cum::vector<T,N>& pIe, per_codec_ctx& pCtx)
+template <typename T>
+void encode_per(const std::vector<T>& pIe, size_t pIndexSize, per_codec_ctx& pCtx)
 {
-    using IndexType = typename GetTypeOfUnsigned<N>::type;
-    if (sizeof(IndexType) > pCtx.size())
+    if (pIndexSize > pCtx.size())
         throw std::out_of_range(__PRETTY_FUNCTION__);
-    encode_per(IndexType(pIe.size()), pCtx);
+    size_t size = pIe.size();
+    encode_per((uint8_t*)&size, pIndexSize, pCtx);
     for (auto& i : pIe)
     {
         encode_per(i, pCtx);
     }
 }
 
-template <typename T, size_t N>
-void decode_per(cum::vector<T, N>& pIe, per_codec_ctx& pCtx)
+template <typename T>
+void decode_per(std::vector<T>& pIe, size_t pIndexSize, per_codec_ctx& pCtx)
 {
-    using IndexType = typename GetTypeOfUnsigned<N>::type;
-    if (sizeof(IndexType) > pCtx.size())
+    if (pIndexSize > pCtx.size())
     {
         throw std::out_of_range(__PRETTY_FUNCTION__);
     }
-    IndexType size;
-    decode_per(size, pCtx);
-    for (IndexType i=0; i<size; i++)
+    size_t size = 0;
+    decode_per((uint8_t*)&size, pIndexSize, pCtx);
+    for (size_t i=0u; i<size; i++)
     {
         pIe.emplace_back();
         decode_per(pIe.back(), pCtx);
     }
 }
 
-template <typename T, size_t N>
-void str(const char* pName, const cum::vector<T,N>& pIe, std::string& pCtx, bool pIsLast)
-{
-    if (!pName)
-    {
-        pCtx = pCtx + "[";
-    }
-    else
-    {
-        pCtx = pCtx + "\"" + pName + "\":[";
-    }
-    for (size_t i=0; i<pIe.size();i++)
-    {
-        str(nullptr, pIe[i], pCtx, (i>=pIe.size()-1) ? true : false);
-    }
-    pCtx += "]";
-    if (!pIsLast)
-    {
-        pCtx += ",";
-    }
-}
-
-template <typename T, size_t N>
-void encode_per(const cum::preallocated_vector<T, N>& pIe, per_codec_ctx& pCtx)
-{
-    using IndexType = typename GetTypeOfUnsigned<N>::type;
-    if (sizeof(IndexType) > pCtx.size())
-    {
-        throw std::out_of_range(__PRETTY_FUNCTION__);
-    }
-    encode_per(IndexType(pIe.size()), pCtx);
-    for (const auto& i : pIe)
-    {
-        encode_per(i, pCtx);
-    }
-}
-
-template <typename T, size_t N>
-void decode_per(cum::preallocated_vector<T, N>& pIe, per_codec_ctx& pCtx)
-{
-    using IndexType = typename GetTypeOfUnsigned<N>::type;
-    if (sizeof(IndexType) > pCtx.size())
-    {
-        throw std::out_of_range(__PRETTY_FUNCTION__);
-    }
-    IndexType size;
-    decode_per(size, pCtx);
-    for (IndexType i=0; i<size; i++)
-    {
-        pIe.emplace_back();
-        decode_per(pIe.back(), pCtx);
-    }
-}
-
-template <typename T, size_t N>
-void str(const char* pName, const cum::preallocated_vector<T, N>& pIe, std::string& pCtx, bool pIsLast)
+template <typename T>
+void str(const char* pName, const std::vector<T>& pIe, std::string& pCtx, bool pIsLast)
 {
     if (!pName)
     {

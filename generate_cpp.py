@@ -28,27 +28,27 @@ class CppGenerator:
 
     def determineUnsignedSize(self, n):
         if (n<256):
-            return "uint8_t"
+            return ("uint8_t", 1)
         elif (n<65536):
-            return "uint16_t"
+            return ("uint16_t", 2)
         elif (n<4294967296):
-            return "uint32_t"
+            return ("uint32_t", 4)
         else:
-            return "uint64_t"
+            return ("uint64_t", 8)
 
     def determineSignedSize(self, n):
         if (n>=-128 or n<125):
-            return "int8_t"
+            return ("int8_t", 1)
         elif (n>=-32768 or n<32768):
-            return "int16_t"
+            return ("int16_t", 2)
         elif (n>=-2147483648 or n<2147483648):
-            return "int32_t"
+            return ("int32_t", 4)
         else:
-            return "int64_t"
+            return ("int64_t", 8)
 
     def processEnumeration(self, name, data):
         es = self.enum_[name]
-        print "enum class " + name + " : " + self.determineUnsignedSize(len(es))
+        print "enum class " + name + " : " + self.determineUnsignedSize(len(es))[0]
         print "{"
         j = 0
         for i in es:
@@ -61,7 +61,7 @@ class CppGenerator:
             else:
                 print "    " + i
             j += 1
-        print "};"
+        print "};\n"
 
     def createScalarAlias(self, name, typee, optional, width):
         if width is None:
@@ -70,42 +70,30 @@ class CppGenerator:
             width = 2**int(width)-1
 
         if typee == "unsigned":
-            typee = self.determineUnsignedSize(int(width))
+            typee = self.determineUnsignedSize(int(width))[0]
         elif typee == "signed":
-            typee = self.determineSignedSize(int(width))
+            typee = self.determineSignedSize(int(width))[0]
 
         if (optional):
             typee = "std::optional<" + typee + ">"
 
         print "using " + name + " = " + typee + ";"
 
-    def createVectorAlias(self, name, typee, optional, width, ts):
+    def createVectorAlias(self, name, typee, optional, width):
         if width is None:
             width = 2**32-1
         else:
             width = 2**int(width)-1
 
-        arrlen = ts["dynamic_array"]
-        if  arrlen == "":
-            arrlen = str(2**32 - 1)
-
-        prealloc = "preallocate" in ts
-
         if typee == "unsigned":
-            typee = self.determineUnsignedSize(int(width))
+            typee = self.determineUnsignedSize(int(width))[0]
         elif typee == "signed":
-            typee = self.determineSignedSize(int(width))
+            typee = self.determineSignedSize(int(width))[0]
 
-        if prealloc == False:
-            typee = "cum::vector<" + typee + ", " + arrlen +">"
-            if (optional):
-                typee = "std::optional<" + typee + ">"
-            print "using " + name + " = " + typee + ";"
-        else:
-            typee = "cum::preallocated_vector<" + typee + ", " + arrlen +">"
-            if (optional):
-                typee = "std::optional<" + typee + ">"
-            print "using " + name + " = " + typee + ";"
+        typee = "std::vector<" + typee + ">"
+        if (optional):
+            typee = "std::optional<" + typee + ">"
+        print "using " + name + " = " + typee + ";"
 
     def processType(self, name, data):
         ts = self.type_[name]
@@ -137,7 +125,7 @@ class CppGenerator:
         if arrlen is None:
             self.createScalarAlias(name, typee, optional, width)
         else:
-            self.createVectorAlias(name, typee, optional, width, ts)
+            self.createVectorAlias(name, typee, optional, width)
 
     def processChoice(self, name, data):
         cs = self.choice_[name]
@@ -192,58 +180,29 @@ class CppGenerator:
             field = "pIe." + i[1]
             fieldt = i[0]
             if  fieldt in self.type_:
+                arlen = None
+                if "dynamic_array" in self.type_[fieldt]:
+                    arlen = self.type_[fieldt]["dynamic_array"]
+                    if arlen == "":
+                        arlen = 2**32-1
+                    arlen = int(arlen)
+                    arlen = self.determineUnsignedSize(arlen)[1]
+                if arlen is not None:
+                    fieldarr = ", " + str(arlen) 
+                else:
+                    fieldarr = ""
                 if "optional" in self.type_[fieldt]:
                     print "    if (" + field +")"
                     print "    {"
-                    print "        encode_per(*" + field + ", pCtx);"
+                    print "        encode_per(*" + field + fieldarr + ", pCtx);"
                     print "    }"
                     j += 1
-                    continue
-            print "    encode_per(" + field + ", pCtx);"
+                else:
+                    print "    encode_per(" + field + fieldarr + ", pCtx);"
         print "}\n"
 
     def createSequenceEncoderUper(self, name, cs):
-        print "/*void encode_uper(const " + name + "& pIe, cum::uper_codec_ctx& pCtx)"
-        print "{"
-        print "    using namespace cum;"
-
-        noptionals = 0
-        for i in cs:
-            fieldt = i[0]
-            if  fieldt in self.type_:
-                if "optional" in self.type_[i[0]]:
-                    noptionals += 1
-        optionalmasksz = int(math.ceil(noptionals*1.0/8))
-        if optionalmasksz > 0:
-            print "    uint8_t optionalmask[" + str(optionalmasksz) + "] = {};"
-
-        j = 0
-        for i in cs:
-            field = "pIe." + i[1]
-            fieldt = i[0]
-            if  fieldt in self.type_:
-                if "optional" in self.type_[fieldt]:
-                    print "    if (" + field +")"
-                    print "    {"
-                    print "        set_optional(optionalmask, " + str(j) + ");"
-                    print "    }"
-                    j += 0
-        if optionalmasksz > 0:
-            print "    encode_uper(optionalmask, sizeof(optionalmask), pCtx);"
-        j = 0
-        for i in cs:
-            field = "pIe." + i[1]
-            fieldt = i[0]
-            if  fieldt in self.type_:
-                if "optional" in self.type_[fieldt]:
-                    print "    if (" + field +")"
-                    print "    {"
-                    print "        encode_uper(*" + field + ", pCtx);"
-                    print "    }"
-                    j += 1
-                    continue
-            print "    encode_uper(" + field + ", pCtx);"
-        print "}*/\n"
+        pass
 
     def createSequenceDecoderPer(self, name, cs):
         print "void decode_per(" + name + "& pIe, cum::per_codec_ctx& pCtx)"
@@ -265,15 +224,26 @@ class CppGenerator:
             field = "pIe." + i[1]
             fieldt = i[0]
             if  fieldt in self.type_:
+                arlen = None
+                if "dynamic_array" in self.type_[fieldt]:
+                    arlen = self.type_[fieldt]["dynamic_array"]
+                    if arlen == "":
+                        arlen = 2**32-1
+                    arlen = int(arlen)
+                    arlen = self.determineUnsignedSize(arlen)[1]
+                if arlen is not None:
+                    fieldarr = ", " + str(arlen) 
+                else:
+                    fieldarr = ""
                 if "optional" in self.type_[i[0]]:
                     print "    if (check_optional(optionalmask, "+str(j)+"))"
                     print "    {"
-                    print "        " + field + " = decltype(" + field + ")::value_type{};"
+                    print "        " + field + " = decltype(" + field + fieldarr + ")::value_type{};"
                     print "        decode_per(*" + field + ", pCtx);"
                     print "    }"
                     j += 1
-                    continue
-            print "    decode_per(" + field + ", pCtx);"
+                else:
+                    print "    decode_per(" + field + fieldarr + ", pCtx);"
         print "}\n"
 
     def createSequenceStrer(self, name, cs):
@@ -317,7 +287,7 @@ class CppGenerator:
         print "void encode_per(const " + name + "& pIe, cum::per_codec_ctx& pCtx)"
         print "{"
         print "    using namespace cum;"
-        print "    using TypeIndex = " + self.determineUnsignedSize(len(cs)) + ";"
+        print "    using TypeIndex = " + self.determineUnsignedSize(len(cs))[0] + ";"
         print "    TypeIndex type = pIe.index();"
         print "    encode_per(type, pCtx);"
         j = 0
@@ -338,7 +308,7 @@ class CppGenerator:
         print "void decode_per(" + name + "& pIe, cum::per_codec_ctx& pCtx)"
         print "{"
         print "    using namespace cum;"
-        print "    using TypeIndex = " + self.determineUnsignedSize(len(cs)) + ";"
+        print "    using TypeIndex = " + self.determineUnsignedSize(len(cs))[0] + ";"
         print "    TypeIndex type;"
         print "    decode_per(type, pCtx);"
         j = 0
@@ -360,7 +330,7 @@ class CppGenerator:
         print "void str(const char* pName, const " + name + "& pIe, std::string& pCtx, bool pIsLast)"
         print "{"
         print "    using namespace cum;"
-        print "    using TypeIndex = " + self.determineUnsignedSize(len(cs)) + ";"
+        print "    using TypeIndex = " + self.determineUnsignedSize(len(cs))[0] + ";"
         print "    TypeIndex type = pIe.index();"
         j = 0
         for i in cs:
