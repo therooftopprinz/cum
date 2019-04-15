@@ -13,7 +13,7 @@ Constant Name
 ```
 Enumeration Name
 {
-    enumerations,...
+    enumeration(value),...
 };
 ```
 #### Types
@@ -24,12 +24,19 @@ Type Name
 };
 ```
 **attributes:**
-* `type(unsigned|signed|float|asciiz)`
-  * unsigned
-  * signed
-  * float
-  * asciiz
-* `width(N)` - numeric argument, specifies the bit width of the type.
+* `type(...)`
+  * unsigned - integral
+  * signed - integral, two's complement
+  * float - IEEE 754 Float
+  * asciiz - string
+  * boolean - boolean
+  * Sequence - sequence
+  * Choice - choice
+  * Enumeration - enumeration
+* `width(N)` - numeric argument, specifies the bit width for encoding, type is chosen by the nearest possible size.
+  * integal - 1 to 64
+  * real - 32 or 64
+  * auto computed if `max(N)` and `min(N)` are provided.
 * `max(N)` - numeric argument, specifies the maximum value constraint.
 * `min(N)` - numeric argument, specifies the minimum value constraint.
 * `dynamic_array(N)` - numeric argument, specifies the maximum length, none (`dynamic_array()`) for no maximum
@@ -54,9 +61,26 @@ Compiles **cum** to C++:
 * Python (planned) <br/>
 * Wireshark dissector (planned) <br/>
 
+## Encoding
+### Packed Encoding
+* All data are byte aligned
+* Integral width is ceiled to nearest type.
+* Optional mask is ceiled to the nearest octet.
+* Choice index type is an integral with `min(0)` and `max(NumberOfChoices)`
+* Array index type is an integral with `min(0)` and `max(N)` where N is `dynamic_array(N)`
+### Unaligned Packed Encoding
+* Integral width is encoded as is.
+* Optional mask is encoded as is.
+
 ## Example 1
 sample2.cum
 ```cpp
+Enumeration Gender
+{
+    Male(10),
+    Female
+};
+
 Type String
 {
     type(asciiz)
@@ -69,12 +93,12 @@ Type OptionalString
 
 Type PhoneNumber
 {
-    type(unsigned) width(8) dynamic_array(15)
+    type(char) dynamic_array(15)
 };
 
 Type PhoneNumberArray
 {
-    type(PhoneNumber) width(8) dynamic_array()
+    type(PhoneNumber) width(8) dynamic_array(32)
 };
 
 Sequence PersonalPhoneEntry
@@ -83,6 +107,7 @@ Sequence PersonalPhoneEntry
     OptionalString middleName,
     String         lastName,
     String         address,
+    Gender         gender,
     PhoneNumberArray phoneNumbers
 };
 
@@ -108,11 +133,35 @@ Sequence PhoneBook
 {
     PhoneEntryArray phoneEntryArray
 };
-
 ```
 
 generated c++:
 ```cpp
+// Enumeration:  ('Gender', ('Male', '10'))
+// Enumeration:  ('Gender', ('Female', None))
+// Type:  ('String', {'type': 'asciiz'})
+// Type:  ('OptionalString', {'type': 'String'})
+// Type:  ('OptionalString', {'optional': ''})
+// Type:  ('PhoneNumber', {'type': 'char'})
+// Type:  ('PhoneNumber', {'dynamic_array': '15'})
+// Type:  ('PhoneNumberArray', {'type': 'PhoneNumber'})
+// Type:  ('PhoneNumberArray', {'width': '8'})
+// Type:  ('PhoneNumberArray', {'dynamic_array': '32'})
+// Sequence:  PersonalPhoneEntry ('String', 'firstName')
+// Sequence:  PersonalPhoneEntry ('OptionalString', 'middleName')
+// Sequence:  PersonalPhoneEntry ('String', 'lastName')
+// Sequence:  PersonalPhoneEntry ('String', 'address')
+// Sequence:  PersonalPhoneEntry ('Gender', 'gender')
+// Sequence:  PersonalPhoneEntry ('PhoneNumberArray', 'phoneNumbers')
+// Sequence:  CorporatePhoneEntry ('String', 'businessName')
+// Sequence:  CorporatePhoneEntry ('String', 'address')
+// Sequence:  CorporatePhoneEntry ('PhoneNumberArray', 'phoneNumbers')
+// Choice:  ('PhoneEntry', 'PersonalPhoneEntry')
+// Choice:  ('PhoneEntry', 'CorporatePhoneEntry')
+// Type:  ('PhoneEntryArray', {'type': 'PhoneEntry'})
+// Type:  ('PhoneEntryArray', {'dynamic_array': ''})
+// Sequence:  PhoneBook ('PhoneEntryArray', 'phoneEntryArray')
+// Generating for C++
 #ifndef __CUM_MSG_HPP__
 #define __CUM_MSG_HPP__
 #include "cum/cum.hpp"
@@ -124,9 +173,15 @@ generated c++:
 /
 ************************************************/
 
+enum class Gender : uint8_t
+{
+    Male = 10, 
+    Female
+};
+
 using String = std::string;
 using OptionalString = std::optional<String>;
-using PhoneNumber = cum::vector<char, 15>;
+using PhoneNumber = std::vector<char>;
 using PhoneNumberArray = std::vector<PhoneNumber>;
 struct PersonalPhoneEntry
 {
@@ -134,6 +189,7 @@ struct PersonalPhoneEntry
     OptionalString middleName;
     String lastName;
     String address;
+    Gender gender;
     PhoneNumberArray phoneNumbers;
 };
 
@@ -157,20 +213,56 @@ struct PhoneBook
 /
 ************************************************/
 
-void encode(const PersonalPhoneEntry& pIe, cum::codec_ctx& pCtx)
+void str(const char* pName, const Gender& pIe, std::string& pCtx, bool pIsLast)
 {
     using namespace cum;
-    uint8_t *optionalmask = new(pCtx.get()) uint8_t[1]{};
-    pCtx.advance(1);
-    encode(pIe.firstName, pCtx);
+    if (pName)
+    {
+        pCtx = pCtx + "\"" + pName + "\":";
+    }
+    if (Gender::Male == pIe) pCtx += "\"Male\"";
+    if (Gender::Female == pIe) pCtx += "\"Female\"";
+    pCtx = pCtx + "}";
+    if (!pIsLast)
+    {
+        pCtx += ",";
+    }
+}
+
+void encode_per(const PersonalPhoneEntry& pIe, cum::per_codec_ctx& pCtx)
+{
+    using namespace cum;
+    uint8_t optionalmask[1] = {};
     if (pIe.middleName)
     {
         set_optional(optionalmask, 0);
-        encode(*pIe.middleName, pCtx);
     }
-    encode(pIe.lastName, pCtx);
-    encode(pIe.address, pCtx);
-    encode(pIe.phoneNumbers, pCtx);
+    encode_per(optionalmask, sizeof(optionalmask), pCtx);
+    encode_per(pIe.firstName, pCtx);
+    if (pIe.middleName)
+    {
+        encode_per(*pIe.middleName, pCtx);
+    }
+    encode_per(pIe.lastName, pCtx);
+    encode_per(pIe.address, pCtx);
+    encode_per(pIe.phoneNumbers, 1, pCtx);
+}
+
+void decode_per(PersonalPhoneEntry& pIe, cum::per_codec_ctx& pCtx)
+{
+    using namespace cum;
+    uint8_t optionalmask[1] = {};
+    decode_per(optionalmask, sizeof(optionalmask), pCtx);
+    decode_per(pIe.firstName, pCtx);
+    if (check_optional(optionalmask, 0))
+    {
+        pIe.middleName = decltype(pIe.middleName)::value_type{};
+        decode_per(*pIe.middleName, pCtx);
+    }
+    decode_per(pIe.lastName, pCtx);
+    decode_per(pIe.address, pCtx);
+    decode_per(pIe.gender, pCtx);
+    decode_per(pIe.phoneNumbers, pCtx);
 }
 
 void str(const char* pName, const PersonalPhoneEntry& pIe, std::string& pCtx, bool pIsLast)
@@ -191,6 +283,7 @@ void str(const char* pName, const PersonalPhoneEntry& pIe, std::string& pCtx, bo
     }
     str("lastName", pIe.lastName, pCtx, false);
     str("address", pIe.address, pCtx, false);
+    str("gender", pIe.gender, pCtx, false);
     str("phoneNumbers", pIe.phoneNumbers, pCtx, true);
     pCtx = pCtx + "}";
     if (!pIsLast)
@@ -199,28 +292,20 @@ void str(const char* pName, const PersonalPhoneEntry& pIe, std::string& pCtx, bo
     }
 }
 
-void decode(PersonalPhoneEntry& pIe, cum::codec_ctx& pCtx)
+void encode_per(const CorporatePhoneEntry& pIe, cum::per_codec_ctx& pCtx)
 {
     using namespace cum;
-    uint8_t *optionalmask = (uint8_t*)pCtx.get();
-    pCtx.advance(1);
-    decode(pIe.firstName, pCtx);
-    if (check_optional(optionalmask, 0))
-    {
-        pIe.middleName = decltype(pIe.middleName)::value_type{};
-        decode(*pIe.middleName, pCtx);
-    }
-    decode(pIe.lastName, pCtx);
-    decode(pIe.address, pCtx);
-    decode(pIe.phoneNumbers, pCtx);
+    encode_per(pIe.businessName, pCtx);
+    encode_per(pIe.address, pCtx);
+    encode_per(pIe.phoneNumbers, 1, pCtx);
 }
 
-void encode(const CorporatePhoneEntry& pIe, cum::codec_ctx& pCtx)
+void decode_per(CorporatePhoneEntry& pIe, cum::per_codec_ctx& pCtx)
 {
     using namespace cum;
-    encode(pIe.businessName, pCtx);
-    encode(pIe.address, pCtx);
-    encode(pIe.phoneNumbers, pCtx);
+    decode_per(pIe.businessName, pCtx);
+    decode_per(pIe.address, pCtx);
+    decode_per(pIe.phoneNumbers, pCtx);
 }
 
 void str(const char* pName, const CorporatePhoneEntry& pIe, std::string& pCtx, bool pIsLast)
@@ -244,52 +329,44 @@ void str(const char* pName, const CorporatePhoneEntry& pIe, std::string& pCtx, b
     }
 }
 
-void decode(CorporatePhoneEntry& pIe, cum::codec_ctx& pCtx)
+void encode_per(const PhoneEntry& pIe, cum::per_codec_ctx& pCtx)
 {
     using namespace cum;
-    decode(pIe.businessName, pCtx);
-    decode(pIe.address, pCtx);
-    decode(pIe.phoneNumbers, pCtx);
-}
-
-void encode(const PhoneEntry& pIe, cum::codec_ctx& pCtx)
-{
-    using namespace cum;
-    using TypeIndex = uint32_t;
+    using TypeIndex = uint8_t;
     TypeIndex type = pIe.index();
-    encode(type, pCtx);
+    encode_per(type, pCtx);
     if (0 == type)
     {
-        encode(std::get<0>(pIe), pCtx);
+        encode_per(std::get<0>(pIe), pCtx);
     }
     else if (1 == type)
     {
-        encode(std::get<1>(pIe), pCtx);
+        encode_per(std::get<1>(pIe), pCtx);
     }
 }
 
-void decode(PhoneEntry& pIe, cum::codec_ctx& pCtx)
+void decode_per(PhoneEntry& pIe, cum::per_codec_ctx& pCtx)
 {
     using namespace cum;
-    using TypeIndex = uint32_t;
+    using TypeIndex = uint8_t;
     TypeIndex type;
-    decode(type, pCtx);
+    decode_per(type, pCtx);
     if (0 == type)
     {
         pIe = PersonalPhoneEntry{};
-        decode(std::get<0>(pIe), pCtx);
+        decode_per(std::get<0>(pIe), pCtx);
     }
     else if (1 == type)
     {
         pIe = CorporatePhoneEntry{};
-        decode(std::get<1>(pIe), pCtx);
+        decode_per(std::get<1>(pIe), pCtx);
     }
 }
 
 void str(const char* pName, const PhoneEntry& pIe, std::string& pCtx, bool pIsLast)
 {
     using namespace cum;
-    using TypeIndex = uint32_t;
+    using TypeIndex = uint8_t;
     TypeIndex type = pIe.index();
     if (0 == type)
     {
@@ -305,10 +382,16 @@ void str(const char* pName, const PhoneEntry& pIe, std::string& pCtx, bool pIsLa
     }
 }
 
-void encode(const PhoneBook& pIe, cum::codec_ctx& pCtx)
+void encode_per(const PhoneBook& pIe, cum::per_codec_ctx& pCtx)
 {
     using namespace cum;
-    encode(pIe.phoneEntryArray, pCtx);
+    encode_per(pIe.phoneEntryArray, 4, pCtx);
+}
+
+void decode_per(PhoneBook& pIe, cum::per_codec_ctx& pCtx)
+{
+    using namespace cum;
+    decode_per(pIe.phoneEntryArray, pCtx);
 }
 
 void str(const char* pName, const PhoneBook& pIe, std::string& pCtx, bool pIsLast)
@@ -330,11 +413,6 @@ void str(const char* pName, const PhoneBook& pIe, std::string& pCtx, bool pIsLas
     }
 }
 
-void decode(PhoneBook& pIe, cum::codec_ctx& pCtx)
-{
-    using namespace cum;
-    decode(pIe.phoneEntryArray, pCtx);
-}
-
 #endif //__CUM_MSG_HPP__
+
 ```
