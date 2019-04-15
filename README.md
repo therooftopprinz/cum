@@ -49,13 +49,13 @@ Sequence Name
 ```
 
 ## Cumpiler
-Compiles **cum** to:
+Compiles **cum** to C++:
 * C++ (ongoing): to use:`./generate_cpp.py cumfile > output.hpp`
 * Python (planned) <br/>
 * Wireshark dissector (planned) <br/>
 
 ## Example 1
-sample2.meta
+sample2.cum
 ```cpp
 Type String
 {
