@@ -262,24 +262,33 @@ class CppGenerator:
         print "    {"
         print "        pCtx = pCtx + \"\\\"\" + pName + \"\\\":{\";"
         print "    }"
+        print "    size_t nOptional = 0;"
 
-        j = 0
+        nMandatory = 0
         for i in cs:
             field = "pIe." + i[1]
             fieldt = i[0]
-            if j == len(cs)-1:
-                last = "true"
+            if  fieldt in self.type_:
+                if "optional" in self.type_[fieldt]:
+                    print "    if (" + field +") nOptional++;"
+                    continue
+                else:
+                    nMandatory += 1
             else:
-                last = "false"
-            j += 1
+                nMandatory += 1
+        print "    size_t nMandatory = " + str(nMandatory) + ";"
+
+        for i in cs:
+            field = "pIe." + i[1]
+            fieldt = i[0]
             if  fieldt in self.type_:
                 if "optional" in self.type_[fieldt]:
                     print "    if (" + field +")"
                     print "    {"
-                    print "        str(\"" + i[1] + "\", *" + field + ", pCtx, " + last + ");"
+                    print "        str(\"" + i[1] + "\", *" + field + ", pCtx, !(nMandatory+--nOptional));"
                     print "    }"
                     continue
-            print "    str(\"" + i[1] + "\", " + field + ", pCtx, " + last + ");"
+            print "    str(\"" + i[1] + "\", " + field + ", pCtx, !(--nMandatory+nOptional));"
         print "    pCtx = pCtx + \"}\";"
         print "    if (!pIsLast)"
         print "    {"
