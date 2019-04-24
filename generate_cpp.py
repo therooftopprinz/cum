@@ -172,7 +172,7 @@ class CppGenerator:
                     print "    {"
                     print "        set_optional(optionalmask, " + str(j) + ");"
                     print "    }"
-                    j += 0
+                    j += 1
         if optionalmasksz > 0:
             print "    encode_per(optionalmask, sizeof(optionalmask), pCtx);"
         j = 0
@@ -188,7 +188,7 @@ class CppGenerator:
                     arlen = int(arlen)
                     arlen = self.determineUnsignedSize(arlen)[1]
                 if arlen is not None:
-                    fieldarr = ", " + str(arlen) 
+                    fieldarr = ", " + str(arlen)
                 else:
                     fieldarr = ""
                 if "optional" in self.type_[fieldt]:
@@ -199,6 +199,8 @@ class CppGenerator:
                     j += 1
                 else:
                     print "    encode_per(" + field + fieldarr + ", pCtx);"
+            else:
+                print "    encode_per(" + field + ", pCtx);"
         print "}\n"
 
     def createSequenceEncoderUper(self, name, cs):
@@ -232,7 +234,7 @@ class CppGenerator:
                     arlen = int(arlen)
                     arlen = self.determineUnsignedSize(arlen)[1]
                 if arlen is not None:
-                    fieldarr = ", " + str(arlen) 
+                    fieldarr = ", " + str(arlen)
                 else:
                     fieldarr = ""
                 if "optional" in self.type_[i[0]]:
@@ -244,6 +246,8 @@ class CppGenerator:
                     j += 1
                 else:
                     print "    decode_per(" + field + fieldarr + ", pCtx);"
+            else:
+                print "    decode_per(" + field + ", pCtx);"
         print "}\n"
 
     def createSequenceStrer(self, name, cs):
