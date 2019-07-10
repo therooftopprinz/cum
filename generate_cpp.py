@@ -148,7 +148,7 @@ class CppGenerator:
         print "};\n"
 
     def createSequenceEncoderPer(self, name, cs):
-        print "void encode_per(const " + name + "& pIe, cum::per_codec_ctx& pCtx)"
+        print "inline void encode_per(const " + name + "& pIe, cum::per_codec_ctx& pCtx)"
         print "{"
         print "    using namespace cum;"
 
@@ -207,7 +207,7 @@ class CppGenerator:
         pass
 
     def createSequenceDecoderPer(self, name, cs):
-        print "void decode_per(" + name + "& pIe, cum::per_codec_ctx& pCtx)"
+        print "inline void decode_per(" + name + "& pIe, cum::per_codec_ctx& pCtx)"
         print "{"
         print "    using namespace cum;"
 
@@ -251,7 +251,7 @@ class CppGenerator:
         print "}\n"
 
     def createSequenceStrer(self, name, cs):
-        print "void str(const char* pName, const " + name + "& pIe, std::string& pCtx, bool pIsLast)"
+        print "inline void str(const char* pName, const " + name + "& pIe, std::string& pCtx, bool pIsLast)"
         print "{"
         print "    using namespace cum;"
         print "    if (!pName)"
@@ -297,7 +297,7 @@ class CppGenerator:
         print "}\n"
 
     def createChoiceEncoderPer(self, name, cs):
-        print "void encode_per(const " + name + "& pIe, cum::per_codec_ctx& pCtx)"
+        print "inline void encode_per(const " + name + "& pIe, cum::per_codec_ctx& pCtx)"
         print "{"
         print "    using namespace cum;"
         print "    using TypeIndex = " + self.determineUnsignedSize(len(cs))[0] + ";"
@@ -318,7 +318,7 @@ class CppGenerator:
         print "}\n"
 
     def createChoiceDecoderPer(self, name, cs):
-        print "void decode_per(" + name + "& pIe, cum::per_codec_ctx& pCtx)"
+        print "inline void decode_per(" + name + "& pIe, cum::per_codec_ctx& pCtx)"
         print "{"
         print "    using namespace cum;"
         print "    using TypeIndex = " + self.determineUnsignedSize(len(cs))[0] + ";"
@@ -340,7 +340,7 @@ class CppGenerator:
         print "}\n"
 
     def createChoiceStrer(self, name, cs):
-        print "void str(const char* pName, const " + name + "& pIe, std::string& pCtx, bool pIsLast)"
+        print "inline void str(const char* pName, const " + name + "& pIe, std::string& pCtx, bool pIsLast)"
         print "{"
         print "    using namespace cum;"
         print "    using TypeIndex = " + self.determineUnsignedSize(len(cs))[0] + ";"
@@ -364,7 +364,7 @@ class CppGenerator:
         print "}\n"
 
     def createEnumStrer(self, name, es):
-        print "void str(const char* pName, const " + name + "& pIe, std::string& pCtx, bool pIsLast)"
+        print "inline void str(const char* pName, const " + name + "& pIe, std::string& pCtx, bool pIsLast)"
         print "{"
         print "    using namespace cum;"
         print "    if (pName)"
