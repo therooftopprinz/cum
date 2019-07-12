@@ -37,14 +37,15 @@ class CppGenerator:
             return ("uint64_t", 8)
 
     def determineSignedSize(self, n):
-        if (n>=-128 or n<125):
+        if (n<256):
             return ("int8_t", 1)
-        elif (n>=-32768 or n<32768):
+        elif (n<65536):
             return ("int16_t", 2)
-        elif (n>=-2147483648 or n<2147483648):
+        elif (n<4294967296):
             return ("int32_t", 4)
         else:
             return ("int64_t", 8)
+
 
     def processEnumeration(self, name, data):
         es = self.enum_[name]
@@ -95,6 +96,23 @@ class CppGenerator:
             typee = "std::optional<" + typee + ">"
         print "using " + name + " = " + typee + ";"
 
+    def createArrayAlias(self, name, typee, optional, width, arrlen):
+        if width is None:
+            width = 2**32-1
+        else:
+            width = 2**int(width)-1
+
+        if typee == "unsigned":
+            typee = self.determineUnsignedSize(int(width))[0]
+        elif typee == "signed":
+            typee = self.determineSignedSize(int(width))[0]
+
+        typee = "cum::static_array<" + typee + ", " + arrlen + ">"
+        if (optional):
+            typee = "std::optional<" + typee + ">"
+        print "using " + name + " = " + typee + ";"
+
+
     def processType(self, name, data):
         ts = self.type_[name]
 
@@ -118,14 +136,22 @@ class CppGenerator:
         if "width" in ts:
             width = ts["width"]
 
-        arrlen = None
+        veclen = None
         if "dynamic_array" in ts:
             arrlen = ts["dynamic_array"]
 
-        if arrlen is None:
-            self.createScalarAlias(name, typee, optional, width)
-        else:
+        arrlen = None
+        if "static_array" in ts:
+            arrlen = ts["static_array"]
+
+        if veclen is not None:
             self.createVectorAlias(name, typee, optional, width)
+            return
+        if arrlen is not None:
+            self.createArrayAlias(name, typee, optional, width, arrlen)
+            return
+
+        self.createScalarAlias(name, typee, optional, width)
 
     def processChoice(self, name, data):
         cs = self.choice_[name]
@@ -187,6 +213,12 @@ class CppGenerator:
                         arlen = 2**32-1
                     arlen = int(arlen)
                     arlen = self.determineUnsignedSize(arlen)[1]
+                if "static_array" in self.type_[fieldt]:
+                    arlen = self.type_[fieldt]["static_array"]
+                    if arlen == "":
+                        arlen = 2**32-1
+                    arlen = int(arlen)
+                    arlen = self.determineUnsignedSize(arlen)[1]
                 if arlen is not None:
                     fieldarr = ", " + str(arlen)
                 else:
@@ -229,6 +261,12 @@ class CppGenerator:
                 arlen = None
                 if "dynamic_array" in self.type_[fieldt]:
                     arlen = self.type_[fieldt]["dynamic_array"]
+                    if arlen == "":
+                        arlen = 2**32-1
+                    arlen = int(arlen)
+                    arlen = self.determineUnsignedSize(arlen)[1]
+                if "static_array" in self.type_[fieldt]:
+                    arlen = self.type_[fieldt]["static_array"]
                     if arlen == "":
                         arlen = 2**32-1
                     arlen = int(arlen)

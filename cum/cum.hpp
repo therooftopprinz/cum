@@ -12,6 +12,138 @@
 namespace cum
 {
 
+template<typename T, size_t N>
+class static_array
+{
+public:
+    static_array() = default;
+
+    ~static_array()
+    {
+        clear();
+    }
+
+    void clear()
+    {
+        size_t oSize = mSize;
+        for (size_t i=0; i<oSize; i++)
+        {
+            pop();
+        }
+    }
+
+    static_array(const std::initializer_list<T>& pList)
+    {
+        for (auto& i : pList)
+        {
+            emplace(i);
+        }
+    }
+
+    static_array& operator=(const std::initializer_list<T>& pList)
+    {
+        clear();
+        for (auto& i : pList)
+        {
+            emplace(i);
+        }
+        return *this;
+    }
+
+    template <typename... U>
+    T& emplace_back(U&&... pArgs)
+    {
+        new ((T*)mData+mSize) T(std::forward<T>(pArgs)...);
+        mSize++;
+        return back();
+    }
+
+    T& operator[](size_t pIndex)
+    {
+        return ((T*)mData)[pIndex];
+    }
+
+    const T& operator[](size_t pIndex) const
+    {
+        return ((T*)mData)[pIndex];
+    }
+
+    void pop()
+    {
+        (*this)[--mSize].~T();
+    }
+
+    T* begin()
+    {
+        return (T*)mData;
+    }
+
+    T* end()
+    {
+        return ((T*)mData)+mSize;
+    }
+
+    const T* begin() const
+    {
+        return (T*)mData;
+    }
+
+    const T* end() const
+    {
+        return ((T*)mData)+mSize;
+    }
+
+    T& front()
+    {
+        return *begin();
+    }
+
+    T& back()
+    {
+        return *(end()-1);
+    }
+
+    const T& front() const
+    {
+        return *begin();
+    }
+
+    const T& back() const
+    {
+        return *(end()-1);
+    }
+
+    const T* cbegin()
+    {
+        return (T*)mData;
+    }
+
+    const T* cend()
+    {
+        return ((T*)mData)+mSize;
+    }
+
+    const T* cbegin() const
+    {
+        return (T*)mData;
+    }
+
+    const T* cend() const
+    {
+        return ((T*)mData)+mSize;
+    }
+
+
+    size_t size() const
+    {
+        return mSize;
+    }
+
+private:
+    size_t mSize = 0;
+    uint8_t mData[sizeof(T)*N];
+};
+
 class per_codec_ctx
 {
 public:
@@ -42,7 +174,7 @@ private:
     size_t mSize;
 };
 
-void encode_per(const uint8_t *pIeOctet, size_t pSize, per_codec_ctx& pCtx)
+inline void encode_per(const uint8_t *pIeOctet, size_t pSize, per_codec_ctx& pCtx)
 {
     if (pSize > pCtx.size())
         throw std::out_of_range(__PRETTY_FUNCTION__);
@@ -50,7 +182,7 @@ void encode_per(const uint8_t *pIeOctet, size_t pSize, per_codec_ctx& pCtx)
     pCtx.advance(pSize);
 }
 
-void decode_per(uint8_t *pIeOctet, size_t pSize, per_codec_ctx& pCtx)
+inline void decode_per(uint8_t *pIeOctet, size_t pSize, per_codec_ctx& pCtx)
 {
     if (pSize > pCtx.size())
         throw std::out_of_range(__PRETTY_FUNCTION__);
@@ -59,7 +191,7 @@ void decode_per(uint8_t *pIeOctet, size_t pSize, per_codec_ctx& pCtx)
 }
 
 template <typename T>
-void encode_per(const T pIe, per_codec_ctx& pCtx)
+inline void encode_per(const T pIe, per_codec_ctx& pCtx)
 {
     if (sizeof(pIe) > pCtx.size())
         throw std::out_of_range(__PRETTY_FUNCTION__);
@@ -68,7 +200,7 @@ void encode_per(const T pIe, per_codec_ctx& pCtx)
 }
 
 template <typename T>
-void decode_per(T& pIe, per_codec_ctx& pCtx)
+inline void decode_per(T& pIe, per_codec_ctx& pCtx)
 {
     if (sizeof(pIe) > pCtx.size())
         throw std::out_of_range(__PRETTY_FUNCTION__);
@@ -77,7 +209,7 @@ void decode_per(T& pIe, per_codec_ctx& pCtx)
 }
 
 template <typename T>
-void str(const char* pName, const T& pIe, std::string& pCtx, bool isLast)
+inline void str(const char* pName, const T& pIe, std::string& pCtx, bool isLast)
 {
     if (!pName)
     {
@@ -94,7 +226,7 @@ void str(const char* pName, const T& pIe, std::string& pCtx, bool isLast)
     }
 }
 
-void str(const char* pName, const char pIe, std::string& pCtx, bool isLast)
+inline void str(const char* pName, const char pIe, std::string& pCtx, bool isLast)
 {
     if (!pName)
     {
@@ -111,7 +243,7 @@ void str(const char* pName, const char pIe, std::string& pCtx, bool isLast)
     }
 }
 
-void encode_per(const std::string& pIe, per_codec_ctx& pCtx)
+inline void encode_per(const std::string& pIe, per_codec_ctx& pCtx)
 {
     const size_t strsz = pIe.size()+1;
     if (strsz > pCtx.size())
@@ -120,7 +252,7 @@ void encode_per(const std::string& pIe, per_codec_ctx& pCtx)
     pCtx.advance(strsz);
 }
 
-void decode_per(std::string& pIe, per_codec_ctx& pCtx)
+inline void decode_per(std::string& pIe, per_codec_ctx& pCtx)
 {
     // TODO: safer pls
     pIe = (const char*)pCtx.get();
@@ -130,7 +262,7 @@ void decode_per(std::string& pIe, per_codec_ctx& pCtx)
     pCtx.advance(strsz);
 }
 
-void str(const char* pName, const std::string& pIe, std::string& pCtx, bool isLast)
+inline void str(const char* pName, const std::string& pIe, std::string& pCtx, bool isLast)
 {
     if (!pName)
     {
@@ -198,14 +330,66 @@ void str(const char* pName, const std::vector<T>& pIe, std::string& pCtx, bool p
     }
 }
 
-bool check_optional(uint8_t *pOptionalMask, size_t n)
+
+template <typename T, size_t N>
+void encode_per(const static_array<T, N>& pIe, size_t pIndexSize, per_codec_ctx& pCtx)
+{
+    if (pIndexSize > pCtx.size())
+        throw std::out_of_range(__PRETTY_FUNCTION__);
+    size_t size = pIe.size();
+    encode_per((uint8_t*)&size, pIndexSize, pCtx);
+    for (auto& i : pIe)
+    {
+        encode_per(i, pCtx);
+    }
+}
+
+template <typename T, size_t N>
+void decode_per(static_array<T, N>& pIe, size_t pIndexSize, per_codec_ctx& pCtx)
+{
+    if (pIndexSize > pCtx.size())
+    {
+        throw std::out_of_range(__PRETTY_FUNCTION__);
+    }
+    size_t size = 0;
+    decode_per((uint8_t*)&size, pIndexSize, pCtx);
+    for (size_t i=0u; i<size; i++)
+    {
+        pIe.emplace_back();
+        decode_per(pIe.back(), pCtx);
+    }
+}
+
+template <typename T, size_t N>
+void str(const char* pName, const static_array<T, N>& pIe, std::string& pCtx, bool pIsLast)
+{
+    if (!pName)
+    {
+        pCtx = pCtx + "[";
+    }
+    else
+    {
+        pCtx = pCtx + "\"" + pName + "\":[";
+    }
+    for (size_t i=0; i<pIe.size();i++)
+    {
+        str(nullptr, pIe[i], pCtx, (i>=pIe.size()-1) ? true : false);
+    }
+    pCtx += "]";
+    if (!pIsLast)
+    {
+        pCtx += ",";
+    }
+}
+
+inline bool check_optional(uint8_t *pOptionalMask, size_t n)
 {
     size_t opos = n >> 3;
     size_t bpos = n & 7;
     return pOptionalMask[opos] & (0x80u >> bpos);
 }
 
-void set_optional(uint8_t *pOptionalMask, size_t n)
+inline void set_optional(uint8_t *pOptionalMask, size_t n)
 {
     size_t opos = n >> 3;
     size_t bpos = n & 7;
