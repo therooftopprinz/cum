@@ -13,7 +13,7 @@ Type Key
 
 Type KeyArray
 {
-    type(key) dynamic_array(MAX_REQUEST_SIZE)
+    type(Key) dynamic_array(MAX_REQUEST_SIZE)
 };
 
 Type TrId
@@ -35,7 +35,7 @@ Sequence KeyValue
 Type KeyValueArray
 {
     type(KeyValue) dynamic_array(MAX_REQUEST_SIZE)
-}
+};
 
 Sequence SetRequest
 {
@@ -70,4 +70,3 @@ Sequence PDU
     TrId trId,
     PDU_Messages message
 };
-Generate {PDU};

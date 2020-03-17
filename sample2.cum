@@ -21,7 +21,7 @@ Type PhoneNumber
 
 Type PhoneNumberArray
 {
-    type(PhoneNumber) width(8) dynamic_array(32)
+    type(PhoneNumber) dynamic_array(32)
 };
 
 Sequence PersonalPhoneEntry
@@ -49,7 +49,7 @@ Choice PhoneEntry
 
 Type PhoneEntryArray
 {
-    type(PhoneEntry) dynamic_array()
+    type(PhoneEntry) dynamic_array(255)
 };
 
 Sequence PhoneBook
