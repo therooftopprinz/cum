@@ -94,6 +94,8 @@ class CppGenerator:
         veclen = None
         if "dynamic_array" in ts:
             veclen = ts["dynamic_array"]
+            if (veclen==''):
+                veclen = 2**32
 
         arrlen = None
         if "static_array" in ts:
