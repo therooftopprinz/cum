@@ -14,9 +14,9 @@ namespace cum
 
 template <size_t N>
 using DetermineUnsignedType =
-    std::conditional_t<(N<256), uint8_t,
-        std::conditional_t<(N<65536), uint16_t,
-            std::conditional_t<(N<4294967296), uint32_t,
+    std::conditional_t<(N<=256), uint8_t,
+        std::conditional_t<(N<=65536), uint16_t,
+            std::conditional_t<(N<=4294967296), uint32_t,
                 uint64_t
             >
         >
