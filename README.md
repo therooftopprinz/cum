@@ -1,4 +1,4 @@
-# CUM
+# Common Universal Messaging
 Common Universal Messaging is a formal notation used for describing data format for general communication.
 
 ## Syntax
@@ -55,8 +55,8 @@ Sequence Name
 };
 ```
 
-## Cumpiler
-Compiles **cum** to C++:
+## Transpiler
+Compiles common universal messenging to C++:
 * C++ (ongoing): to use:`./generate_cpp.py cumfile > output.hpp`
 * Python (planned) <br/>
 * Wireshark dissector (planned) <br/>
