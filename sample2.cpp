@@ -17,6 +17,7 @@ void printBuffer(void* pPtr, size_t pSize)
 
 int main()
 {
+    using namespace cum;
     PhoneBook pb;
 
     {

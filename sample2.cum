@@ -1,58 +1,35 @@
-Enumeration Gender
-{
-    Male(10),
+enumeration Gender {
+    Male = 10,
     Female
 };
 
-Type String
-{
-    type(asciiz)
-};
+type String           type=string;
+type OptionalString   type=string, optional;
+type PhoneNumber      type=char, dynamic_array=22;
+type PhoneNumberArray type=PhoneNumber, dynamic_array=32;
 
-Type OptionalString
-{
-    type(String) optional()
-};
-
-Type PhoneNumber
-{
-    type(char) dynamic_array(15)
-};
-
-Type PhoneNumberArray
-{
-    type(PhoneNumber) dynamic_array(32)
-};
-
-Sequence PersonalPhoneEntry
-{
-    String         firstName,
-    OptionalString middleName,
-    String         lastName,
-    String         address,
-    Gender         gender,
+sequence PersonalPhoneEntry {
+    String           firstName,
+    OptionalString   middleName,
+    String           lastName,
+    String           address,
+    Gender           gender,
     PhoneNumberArray phoneNumbers
 };
 
-Sequence CorporatePhoneEntry
-{
-    String      businessName,
-    String      address,
+sequence CorporatePhoneEntry {
+    String           businessName,
+    String           address,
     PhoneNumberArray phoneNumbers
 };
 
-Choice PhoneEntry
-{
+choice PhoneEntry {
     PersonalPhoneEntry,
     CorporatePhoneEntry
 };
 
-Type PhoneEntryArray
-{
-    type(PhoneEntry) dynamic_array(255)
-};
+type PhoneEntryArray type=PhoneEntry, dynamic_array=255;
 
-Sequence PhoneBook
-{
+sequence PhoneBook {
     PhoneEntryArray phoneEntryArray
 };

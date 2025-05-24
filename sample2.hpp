@@ -1,10 +1,10 @@
 // Enumeration:  ('Gender', ('Male', '10'))
 // Enumeration:  ('Gender', ('Female', None))
-// Type:  ('String', {'type': 'asciiz'})
-// Type:  ('OptionalString', {'type': 'String'})
-// Type:  ('OptionalString', {'optional': ''})
+// Type:  ('String', {'type': 'string'})
+// Type:  ('OptionalString', {'type': 'string'})
+// Type:  ('OptionalString', {'optional': None})
 // Type:  ('PhoneNumber', {'type': 'char'})
-// Type:  ('PhoneNumber', {'dynamic_array': '15'})
+// Type:  ('PhoneNumber', {'dynamic_array': '22'})
 // Type:  ('PhoneNumberArray', {'type': 'PhoneNumber'})
 // Type:  ('PhoneNumberArray', {'dynamic_array': '32'})
 // Sequence:  PersonalPhoneEntry ('String', 'firstName')
@@ -27,21 +27,24 @@
 #include "cum/cum.hpp"
 #include <optional>
 
+namespace cum
+{
+
 /***********************************************
 /
 /            Message Definitions
 /
 ************************************************/
 
-enum class Gender : uint8_t
+enum Gender
 {
     Male = 10,
     Female
 };
 
-using String = std::string;
-using OptionalString = std::optional<String>;
-using PhoneNumber = cum::vector<char, 15>;
+using String = string;
+using OptionalString = std::optional<string>;
+using PhoneNumber = cum::vector<char, 22>;
 using PhoneNumberArray = cum::vector<PhoneNumber, 32>;
 struct PersonalPhoneEntry
 {
@@ -293,4 +296,5 @@ inline void str(const char* pName, const PhoneBook& pIe, std::string& pCtx, bool
     }
 }
 
+} // namespace cum
 #endif //__CUM_MSG_HPP__

@@ -1,23 +1,17 @@
-// Enumeration:  ('Cause', ('Ok', None))
+// Enumeration:  ('Cause', ('NOK', '-1'))
+// Enumeration:  ('Cause', ('OK', None))
 // Constant:  ('MAX_REQUEST_SIZE', '16')
 // Constant:  ('MAX_VALUE_SIZE', '64')
-// Type:  ('Key', {'type': 'unsigned'})
-// Type:  ('Key', {'width': '8'})
-// Type:  ('Key', {'min': '1'})
-// Type:  ('Key', {'max': '255'})
+// Type:  ('Key', {'type': 'u32'})
 // Type:  ('KeyArray', {'type': 'Key'})
 // Type:  ('KeyArray', {'dynamic_array': 'MAX_REQUEST_SIZE'})
-// Type:  ('TrId', {'type': 'unsigned'})
-// Type:  ('TrId', {'optional': ''})
-// Type:  ('TrId', {'min': '0'})
-// Type:  ('TrId', {'max': '255'})
-// Type:  ('OctetString', {'type': 'unsigned'})
-// Type:  ('OctetString', {'width': '8'})
+// Type:  ('TrId', {'type': 'u32'})
+// Type:  ('TrId', {'optional': None})
+// Type:  ('OctetString', {'type': 'u32'})
 // Type:  ('OctetString', {'dynamic_array': 'MAX_VALUE_SIZE'})
 // Sequence:  KeyValue ('Key', 'key')
 // Sequence:  KeyValue ('OctetString', 'value')
 // Type:  ('KeyValueArray', {'type': 'KeyValue'})
-// Type:  ('KeyValueArray', {'width': '8'})
 // Type:  ('KeyValueArray', {'dynamic_array': 'MAX_REQUEST_SIZE'})
 // Sequence:  SetRequest ('KeyValueArray', 'data')
 // Sequence:  SetResponse ('Cause', 'cause')
@@ -35,23 +29,27 @@
 #include "cum/cum.hpp"
 #include <optional>
 
+namespace cum
+{
+
 /***********************************************
 /
 /            Message Definitions
 /
 ************************************************/
 
-enum class Cause : uint8_t
+enum Cause
 {
-    Ok
+    NOK = -1,
+    OK
 };
 
 constexpr auto MAX_REQUEST_SIZE = 16;
 constexpr auto MAX_VALUE_SIZE = 64;
-using Key = uint8_t;
+using Key = u32;
 using KeyArray = cum::vector<Key, MAX_REQUEST_SIZE>;
-using TrId = std::optional<uint32_t>;
-using OctetString = cum::vector<uint8_t, MAX_VALUE_SIZE>;
+using TrId = std::optional<u32>;
+using OctetString = cum::vector<u32, MAX_VALUE_SIZE>;
 struct KeyValue
 {
     Key key;
@@ -99,7 +97,8 @@ inline void str(const char* pName, const Cause& pIe, std::string& pCtx, bool pIs
     {
         pCtx = pCtx + "\"" + pName + "\":";
     }
-    if (Cause::Ok == pIe) pCtx += "\"Ok\"";
+    if (Cause::NOK == pIe) pCtx += "\"NOK\"";
+    if (Cause::OK == pIe) pCtx += "\"OK\"";
     pCtx = pCtx + "}";
     if (!pIsLast)
     {
@@ -433,4 +432,5 @@ inline void str(const char* pName, const PDU& pIe, std::string& pCtx, bool pIsLa
     }
 }
 
+} // namespace cum
 #endif //__CUM_MSG_HPP__

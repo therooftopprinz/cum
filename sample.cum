@@ -1,72 +1,47 @@
-Enumeration Cause
-{
-    Ok
+enumeration Cause {
+    NOK = -1,
+    OK
 };
 
-Constant MAX_REQUEST_SIZE {16};
-Constant MAX_VALUE_SIZE {64};
+constant MAX_REQUEST_SIZE = 16;
+constant MAX_VALUE_SIZE   = 64;
 
-Type Key
-{
-    type(unsigned) width(8) min(1) max(255)
-};
+type Key         type=u32;
+type KeyArray    type=Key, dynamic_array=MAX_REQUEST_SIZE;
+type TrId        type=u32, optional;
+type OctetString type=u32, dynamic_array=MAX_VALUE_SIZE;
 
-Type KeyArray
-{
-    type(Key) dynamic_array(MAX_REQUEST_SIZE)
-};
-
-Type TrId
-{
-    type(unsigned) optional() min(0) max(255)
-};
-
-Type OctetString
-{
-    type(unsigned) width(8) dynamic_array(MAX_VALUE_SIZE)
-};
-
-Sequence KeyValue
-{
+sequence KeyValue {
     Key key,
     OctetString value
 };
 
-Type KeyValueArray
-{
-    type(KeyValue) dynamic_array(MAX_REQUEST_SIZE)
-};
+type KeyValueArray type=KeyValue, dynamic_array=MAX_REQUEST_SIZE;
 
-Sequence SetRequest
-{
+sequence SetRequest {
     KeyValueArray data
 };
 
-Sequence SetResponse
-{
+sequence SetResponse {
     Cause cause
 };
 
-Sequence GetRequest
-{
+sequence GetRequest {
     KeyArray data
 };
 
-Sequence GetResponse
-{
+sequence GetResponse {
     KeyValueArray data
 };
 
-Choice PDU_Messages
-{
+choice PDU_Messages {
     SetRequest,
     SetResponse,
     GetRequest,
     GetResponse
 };
 
-Sequence PDU
-{
+sequence PDU {
     TrId trId,
     PDU_Messages message
 };

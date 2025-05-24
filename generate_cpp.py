@@ -44,12 +44,12 @@ class CppGenerator:
             return ("int64_t", 8)
 
     def processConstant(self, name, data):
-        print "constexpr auto {} = {};".format(name, self.constant_[name]);
+        print ("constexpr auto {} = {};".format(name, self.constant_[name]))
 
     def processEnumeration(self, name, data):
         es = self.enum_[name]
-        print "enum class {} : {}".format(name, self.determineUnsignedSize(len(es))[0])
-        print "{"
+        print ("enum {}".format(name))
+        print ("{")
         j = 0
         for i in es:
             if (i[1] is not None):
@@ -57,11 +57,11 @@ class CppGenerator:
             else:
                 i = i[0]
             if (j<len(es)-1):
-                print "    {},".format(i)
+                print ("    {},".format(i))
             else:
-                print "    {}".format(i)
+                print ("    {}".format(i))
             j += 1
-        print "};\n"
+        print ("};\n")
 
     def processType(self, name, data):
         ts = self.type_[name]
@@ -73,23 +73,7 @@ class CppGenerator:
         if "optional" in ts:
             typewrap = "std::optional<{}>"
 
-        typee = ts["type"]
-        if typee == "asciiz":
-            t = "std::string"
-            print "using {} = {};".format(name, typewrap.format(t))
-            return
-
-        width = None
-        if "width" in ts:
-            width = ts["width"]
-            width = 2**int(width)-1
-        else:
-            width = 2**32-1
-
-        if typee == "unsigned":
-            typee = self.determineUnsignedSize(int(width))[0]
-        elif typee == "signed":
-            typee = self.determineSignedSize(int(width))[0]
+        type = ts["type"]
 
         veclen = None
         if "dynamic_array" in ts:
@@ -98,15 +82,15 @@ class CppGenerator:
                 veclen = 2**32
 
         arrlen = None
-        if "static_array" in ts:
-            arrlen = ts["static_array"]
+        if "array" in ts:
+            arrlen = ts["array"]
 
         if veclen is not None:
-            typee = "cum::vector<{}, {}>".format(typee, veclen)
+            type = "cum::vector<{}, {}>".format(type, veclen)
         elif arrlen is not None:
-            typee = "cum::static_array<{}, {}>".format(typee, arrlen)
+            type = "cum::static_array<{}, {}>".format(type, arrlen)
 
-        print "using {} = {};".format(name, typewrap.format(typee))
+        print ("using {} = {};".format(name, typewrap.format(type)))
 
     def processChoice(self, name, data):
         cs = self.choice_[name]
@@ -118,20 +102,20 @@ class CppGenerator:
             else:
                 s += i
             j  += 1
-        print "using {} = std::variant<{}>;".format(name,s)
+        print ("using {} = std::variant<{}>;".format(name,s))
 
     def processSequence(self, name, data):
         cs = self.sequence_[name]
-        print "struct " + name
-        print "{"
+        print ("struct " + name)
+        print ("{")
         for i in cs:
-            print "    {} {};".format(i[0], i[1])
-        print "};\n"
+            print ("    {} {};".format(i[0], i[1]))
+        print ("};\n")
 
     def createSequenceEncoderPer(self, name, cs):
-        print "inline void encode_per(const {}& pIe, cum::per_codec_ctx& pCtx)".format(name)
-        print "{"
-        print "    using namespace cum;"
+        print ("inline void encode_per(const {}& pIe, cum::per_codec_ctx& pCtx)".format(name))
+        print ("{")
+        print ("    using namespace cum;")
 
         noptionals = 0
         for i in cs:
@@ -141,7 +125,7 @@ class CppGenerator:
                     noptionals += 1
         optionalmasksz = int(math.ceil(noptionals*1.0/8))
         if optionalmasksz > 0:
-            print "    uint8_t optionalmask[{}] = {{}};".format(str(optionalmasksz))
+            print ("    uint8_t optionalmask[{}] = {{}};".format(str(optionalmasksz)))
 
         j = 0
         for i in cs:
@@ -149,34 +133,34 @@ class CppGenerator:
             fieldt = i[0]
             if  fieldt in self.type_:
                 if "optional" in self.type_[fieldt]:
-                    print "    if ({})".format(field)
-                    print "    {"
-                    print "        set_optional(optionalmask, {});".format(str(j))
-                    print "    }"
+                    print ("    if ({})".format(field))
+                    print ("    {")
+                    print ("        set_optional(optionalmask, {});".format(str(j)))
+                    print ("    }")
                     j += 1
         if optionalmasksz > 0:
-            print "    encode_per(optionalmask, sizeof(optionalmask), pCtx);"
+            print ("    encode_per(optionalmask, sizeof(optionalmask), pCtx);")
         j = 0
         for i in cs:
             field = "pIe." + i[1]
             fieldt = i[0]
             if  fieldt in self.type_:
                 if "optional" in self.type_[fieldt]:
-                    print "    if ({})".format(field)
-                    print "    {"
-                    print "        encode_per(*{}, pCtx);".format(field)
-                    print "    }"
+                    print ("    if ({})".format(field))
+                    print ("    {")
+                    print ("        encode_per(*{}, pCtx);".format(field))
+                    print ("    }")
                     j += 1
                 else:
-                    print "    encode_per({}, pCtx);".format(field)
+                    print ("    encode_per({}, pCtx);".format(field))
             else:
-                print "    encode_per({}, pCtx);".format(field)
-        print "}\n"
+                print ("    encode_per({}, pCtx);".format(field))
+        print ("}\n")
 
     def createSequenceDecoderPer(self, name, cs):
-        print "inline void decode_per(" + name + "& pIe, cum::per_codec_ctx& pCtx)"
-        print "{"
-        print "    using namespace cum;"
+        print ("inline void decode_per(" + name + "& pIe, cum::per_codec_ctx& pCtx)")
+        print ("{")
+        print ("    using namespace cum;")
 
         noptionals = 0
         for i in cs:
@@ -186,39 +170,39 @@ class CppGenerator:
                     noptionals += 1
         optionalmasksz = int(math.ceil(noptionals*1.0/8))
         if optionalmasksz > 0:
-            print "    uint8_t optionalmask[" + str(optionalmasksz) + "] = {};"
-            print "    decode_per(optionalmask, sizeof(optionalmask), pCtx);"
+            print ("    uint8_t optionalmask[" + str(optionalmasksz) + "] = {};")
+            print ("    decode_per(optionalmask, sizeof(optionalmask), pCtx);")
         j = 0
         for i in cs:
             field = "pIe." + i[1]
             fieldt = i[0]
             if  fieldt in self.type_:
                 if "optional" in self.type_[i[0]]:
-                    print "    if (check_optional(optionalmask, "+str(j)+"))"
-                    print "    {"
-                    print "        " + field + " = decltype(" + field + ")::value_type{};"
-                    print "        decode_per(*" + field + ", pCtx);"
-                    print "    }"
+                    print ("    if (check_optional(optionalmask, "+str(j)+"))")
+                    print ("    {")
+                    print ("        " + field + " = decltype(" + field + ")::value_type{};")
+                    print ("        decode_per(*" + field + ", pCtx);")
+                    print ("    }")
                     j += 1
                 else:
-                    print "    decode_per(" + field + ", pCtx);"
+                    print ("    decode_per(" + field + ", pCtx);")
             else:
-                print "    decode_per(" + field + ", pCtx);"
-        print "}\n"
+                print ("    decode_per(" + field + ", pCtx);")
+        print ("}\n")
 
     def createSequenceStrer(self, name, cs):
-        print "inline void str(const char* pName, const " + name + "& pIe, std::string& pCtx, bool pIsLast)"
-        print "{"
-        print "    using namespace cum;"
-        print "    if (!pName)"
-        print "    {"
-        print "        pCtx = pCtx + \"{\";"
-        print "    }"
-        print "    else"
-        print "    {"
-        print "        pCtx = pCtx + \"\\\"\" + pName + \"\\\":{\";"
-        print "    }"
-        print "    size_t nOptional = 0;"
+        print ("inline void str(const char* pName, const " + name + "& pIe, std::string& pCtx, bool pIsLast)")
+        print ("{")
+        print ("    using namespace cum;")
+        print ("    if (!pName)")
+        print ("    {")
+        print ("        pCtx = pCtx + \"{\";")
+        print ("    }")
+        print ("    else")
+        print ("    {")
+        print ("        pCtx = pCtx + \"\\\"\" + pName + \"\\\":{\";")
+        print ("    }")
+        print ("    size_t nOptional = 0;")
 
         nMandatory = 0
         for i in cs:
@@ -226,39 +210,39 @@ class CppGenerator:
             fieldt = i[0]
             if  fieldt in self.type_:
                 if "optional" in self.type_[fieldt]:
-                    print "    if (" + field +") nOptional++;"
+                    print ("    if (" + field +") nOptional++;")
                     continue
                 else:
                     nMandatory += 1
             else:
                 nMandatory += 1
-        print "    size_t nMandatory = " + str(nMandatory) + ";"
+        print ("    size_t nMandatory = " + str(nMandatory) + ";")
 
         for i in cs:
             field = "pIe." + i[1]
             fieldt = i[0]
             if  fieldt in self.type_:
                 if "optional" in self.type_[fieldt]:
-                    print "    if (" + field +")"
-                    print "    {"
-                    print "        str(\"" + i[1] + "\", *" + field + ", pCtx, !(nMandatory+--nOptional));"
-                    print "    }"
+                    print ("    if (" + field +")")
+                    print ("    {")
+                    print ("        str(\"" + i[1] + "\", *" + field + ", pCtx, !(nMandatory+--nOptional));")
+                    print ("    }")
                     continue
-            print "    str(\"" + i[1] + "\", " + field + ", pCtx, !(--nMandatory+nOptional));"
-        print "    pCtx = pCtx + \"}\";"
-        print "    if (!pIsLast)"
-        print "    {"
-        print "        pCtx += \",\";"
-        print "    }"
-        print "}\n"
+            print ("    str(\"" + i[1] + "\", " + field + ", pCtx, !(--nMandatory+nOptional));")
+        print ("    pCtx = pCtx + \"}\";")
+        print ("    if (!pIsLast)")
+        print ("    {")
+        print ("        pCtx += \",\";")
+        print ("    }")
+        print ("}\n")
 
     def createChoiceEncoderPer(self, name, cs):
-        print "inline void encode_per(const " + name + "& pIe, cum::per_codec_ctx& pCtx)"
-        print "{"
-        print "    using namespace cum;"
-        print "    using TypeIndex = " + self.determineUnsignedSize(len(cs))[0] + ";"
-        print "    TypeIndex type = pIe.index();"
-        print "    encode_per(type, pCtx);"
+        print ("inline void encode_per(const " + name + "& pIe, cum::per_codec_ctx& pCtx)")
+        print ("{")
+        print ("    using namespace cum;")
+        print ("    using TypeIndex = " + self.determineUnsignedSize(len(cs))[0] + ";")
+        print ("    TypeIndex type = pIe.index();")
+        print ("    encode_per(type, pCtx);")
         j = 0
         for i in cs:
             js = str(j)
@@ -266,20 +250,20 @@ class CppGenerator:
                 oelse = "else "
             else:
                 oelse = ""
-            print "    " + oelse + "if ("+ js + " == type)"
-            print "    {"
-            print "        encode_per(std::get<" + js + ">(pIe), pCtx);"
-            print "    }"
+            print ("    " + oelse + "if ("+ js + " == type)")
+            print ("    {")
+            print ("        encode_per(std::get<" + js + ">(pIe), pCtx);")
+            print ("    }")
             j += 1
-        print "}\n"
+        print ("}\n")
 
     def createChoiceDecoderPer(self, name, cs):
-        print "inline void decode_per(" + name + "& pIe, cum::per_codec_ctx& pCtx)"
-        print "{"
-        print "    using namespace cum;"
-        print "    using TypeIndex = " + self.determineUnsignedSize(len(cs))[0] + ";"
-        print "    TypeIndex type;"
-        print "    decode_per(type, pCtx);"
+        print ("inline void decode_per(" + name + "& pIe, cum::per_codec_ctx& pCtx)")
+        print ("{")
+        print ("    using namespace cum;")
+        print ("    using TypeIndex = " + self.determineUnsignedSize(len(cs))[0] + ";")
+        print ("    TypeIndex type;")
+        print ("    decode_per(type, pCtx);")
         j = 0
         for i in cs:
             js = str(j)
@@ -287,20 +271,20 @@ class CppGenerator:
                 oelse = "else "
             else:
                 oelse = ""
-            print "    " + oelse + "if (" + js + " == type)"
-            print "    {"
-            print "        pIe = " + cs[j] + "();"
-            print "        decode_per(std::get<" + js + ">(pIe), pCtx);"
-            print "    }"
+            print ("    " + oelse + "if (" + js + " == type)")
+            print ("    {")
+            print ("        pIe = " + cs[j] + "();")
+            print ("        decode_per(std::get<" + js + ">(pIe), pCtx);")
+            print ("    }")
             j += 1
-        print "}\n"
+        print ("}\n")
 
     def createChoiceStrer(self, name, cs):
-        print "inline void str(const char* pName, const " + name + "& pIe, std::string& pCtx, bool pIsLast)"
-        print "{"
-        print "    using namespace cum;"
-        print "    using TypeIndex = " + self.determineUnsignedSize(len(cs))[0] + ";"
-        print "    TypeIndex type = pIe.index();"
+        print ("inline void str(const char* pName, const " + name + "& pIe, std::string& pCtx, bool pIsLast)")
+        print ("{")
+        print ("    using namespace cum;")
+        print ("    using TypeIndex = " + self.determineUnsignedSize(len(cs))[0] + ";")
+        print ("    TypeIndex type = pIe.index();")
         j = 0
         for i in cs:
             js = str(j)
@@ -308,40 +292,40 @@ class CppGenerator:
                 oelse = "else "
             else:
                 oelse = ""
-            print "    " + oelse + "if ("+ js + " == type)"
-            print "    {"
-            print "        if (pName)"
-            print "            pCtx += std::string(pName) + \":{\";"
-            print "        else"
-            print "            pCtx += \"{\";"
-            print "        std::string name = \"" + i + "\";"
-            print "        str(name.c_str(), std::get<" + js + ">(pIe), pCtx, true);"
-            print "        pCtx += \"}\";"
-            print "    }"
+            print ("    " + oelse + "if ("+ js + " == type)")
+            print ("    {")
+            print ("        if (pName)")
+            print ("            pCtx += std::string(pName) + \":{\";")
+            print ("        else")
+            print ("            pCtx += \"{\";")
+            print ("        std::string name = \"" + i + "\";")
+            print ("        str(name.c_str(), std::get<" + js + ">(pIe), pCtx, true);")
+            print ("        pCtx += \"}\";")
+            print ("    }")
             j += 1
-        print "    if (!pIsLast)"
-        print "    {"
-        print "        pCtx += \",\";"
-        print "    }"
-        print "}\n"
+        print ("    if (!pIsLast)")
+        print ("    {")
+        print ("        pCtx += \",\";")
+        print ("    }")
+        print ("}\n")
 
     def createEnumStrer(self, name, es):
-        print "inline void str(const char* pName, const " + name + "& pIe, std::string& pCtx, bool pIsLast)"
-        print "{"
-        print "    using namespace cum;"
-        print "    if (pName)"
-        print "    {"
-        print "        pCtx = pCtx + \"\\\"\" + pName + \"\\\":\";"
-        print "    }"
+        print ("inline void str(const char* pName, const " + name + "& pIe, std::string& pCtx, bool pIsLast)")
+        print ("{")
+        print ("    using namespace cum;")
+        print ("    if (pName)")
+        print ("    {")
+        print ("        pCtx = pCtx + \"\\\"\" + pName + \"\\\":\";")
+        print ("    }")
 
         for i in es:
-            print "    if ("+ name + "::" + i[0] +" == pIe) pCtx += \"\\\"" + i[0] + "\\\"\";"
-        print "    pCtx = pCtx + \"}\";"
-        print "    if (!pIsLast)"
-        print "    {"
-        print "        pCtx += \",\";"
-        print "    }"
-        print "}\n"
+            print ("    if ("+ name + "::" + i[0] +" == pIe) pCtx += \"\\\"" + i[0] + "\\\"\";")
+        print ("    pCtx = pCtx + \"}\";")
+        print ("    if (!pIsLast)")
+        print ("    {")
+        print ("        pCtx += \",\";")
+        print ("    }")
+        print ("}\n")
 
     def processSequenceCodec(self, name, data):
         cs = self.sequence_[name]
@@ -361,53 +345,57 @@ class CppGenerator:
 
 
     def generate(self):
-        print "// Generating for C++"
+        print ("// Generating for C++")
         defname = "__CUM_MSG_HPP__";
-        print "#ifndef " + defname
-        print "#define " + defname
-        print "#include \"cum/cum.hpp\""
-        print "#include <optional>"
-        print ""
-        print "/***********************************************"
-        print "/"
-        print "/            Message Definitions"
-        print "/"
-        print "************************************************/\n"
+        print ("#ifndef " + defname)
+        print ("#define " + defname)
+        print ("#include \"cum/cum.hpp\"")
+        print ("#include <optional>")
+        print ("")
+        print ("namespace cum")
+        print ("{")
+        print ("")
+        print ("/***********************************************")
+        print ("/")
+        print ("/            Message Definitions")
+        print ("/")
+        print ("************************************************/\n")
 
         for i in self.pass1_expressions_:
             t = i[0]
             n = i[1]
             v = i[2]
 
-            if (t == "Constant"):
+            if (t == "constant"):
                 self.processConstant(n, v)
-            elif (t == "Enumeration"):
+            elif (t == "enumeration"):
                 self.processEnumeration(n, v)
-            elif (t == "Type"):
+            elif (t == "type"):
                 self.processType(n, v)
-            elif (t == "Choice"):
+            elif (t == "choice"):
                 self.processChoice(n, v)
-            elif (t == "Sequence"):
+            elif (t == "sequence"):
                 self.processSequence(n, v)
 
-        print "/***********************************************"
-        print "/"
-        print "/            Codec Definitions"
-        print "/"
-        print "************************************************/\n"
+        print ("/***********************************************")
+        print ("/")
+        print ("/            Codec Definitions")
+        print ("/")
+        print ("************************************************/\n")
 
         for i in self.pass1_expressions_:
             t = i[0]
             n = i[1]
             v = i[2]
 
-            if (t == "Sequence"):
+            if (t == "sequence"):
                 self.processSequenceCodec(n, v)
-            elif (t == "Choice"):
+            elif (t == "choice"):
                 self.processChoiceCodec(n, v)
-            elif (t == "Enumeration"):
+            elif (t == "enumeration"):
                 self.processEnumCodec(n, v)
-        print "#endif //" + defname
+        print ("} // namespace cum")
+        print ("#endif //" + defname)
 
 class ExpressionParser:
     def __init__(self):
@@ -419,37 +407,40 @@ class ExpressionParser:
         self.pass1_expressions_ = []
 
     def processConstant(self, name, data):
-        data = data.strip()
-        print "// Constant: ", (name, data)
+        data = data.lstrip("=").strip()
+        print ("// Constant: ", (name, data))
         self.constant_[name] = data;
 
     def processEnumeration(self, name, data):
+        data = data.lstrip("{").rstrip("}")
         data = [i.strip() for i in data.split(",")]
         self.enum_[name] = []
         for i in data:
-            match = re.match(r"^(.*?)(?:\((.*?)\))*$", i)
+            match = re.match(r"^([A-Za-z0-9_]+)\s*(?:=\s*([A-Za-z0-9_\-]+))*", i)
             i = (match.group(1), match.group(2))
             self.enum_[name].append(i)
-            print "// Enumeration: ", (name, i)
+            print ("// Enumeration: ", (name, i))
 
     def processType(self, name, data):
-        data = [i for i in data.split(" ")]
+        data = [i for i in data.split(", ")]
         self.type_[name] = {}
         for i in data:
             if (i == ''):
                 continue
-            match = re.match(r"^(.*?)\((.*?)\)$", i)
+            match = re.match(r"^([A-Za-z0-9_]+)\s*(?:=\s*(.*?))*$", i)
             self.type_[name][match.group(1)] = match.group(2)
-            print "// Type: ", (name, {match.group(1): match.group(2)})
+            print ("// Type: ", (name, {match.group(1): match.group(2)}))
 
     def processChoice(self, name, data):
+        data = data.lstrip("{").rstrip("}")
         data = [i.strip() for i in data.split(",")]
         self.choice_[name] = []
         for i in data:
             self.choice_[name].append(i)
-            print "// Choice: ", (name, i)
+            print ("// Choice: ", (name, i))
 
     def processSequence(self, name, data):
+        data = data.lstrip("{").rstrip("}")
         data = [i.strip() for i in data.split(",")]
         self.sequence_[name] = []
         for i in data:
@@ -459,30 +450,31 @@ class ExpressionParser:
             t = match.group(1)
             n = match.group(2)
             self.sequence_[name].append((t, n))
-            print "// Sequence: ", name, (t, n)
+            print ("// Sequence: ", name, (t, n))
 
     def pass1(self, expressions):
         for i in expressions:
             i = i.strip()
-
-            match = re.match(r"(.*?)[ \t]+(.*?){(.*?)}", i);
+            match = re.match(r"([A-Za-z0-9_]+)\s+([A-Za-z0-9_]+)\s*(.*)", i);
             if match is None:
                 continue
             t = match.group(1).strip()
             n = match.group(2).strip()
             v = match.group(3).strip()
 
+            # print ("// Expression: {} | t={} | n={} | v={}".format(i, t, n, v))
+
             self.pass1_expressions_.append((t,n,v))
 
-            if (t == "Constant"):
+            if (t == "constant"):
                 self.processConstant(n, v)
-            elif (t == "Enumeration"):
+            elif (t == "enumeration"):
                 self.processEnumeration(n, v)
-            elif (t == "Type"):
+            elif (t == "type"):
                 self.processType(n, v)
-            elif (t == "Choice"):
+            elif (t == "choice"):
                 self.processChoice(n, v)
-            elif (t == "Sequence"):
+            elif (t == "sequence"):
                 self.processSequence(n, v)
 
     def parse(self, expressions):
