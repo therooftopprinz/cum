@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(cum VERSION 1.0.29 LANGUAGES CXX)
+project(cum VERSION 1.0.32 LANGUAGES CXX)
 
 add_library(cum INTERFACE)
 
