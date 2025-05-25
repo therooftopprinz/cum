@@ -422,7 +422,7 @@ class ExpressionParser:
             print ("// Enumeration: ", (name, i))
 
     def processType(self, name, data):
-        data = [i for i in data.split(", ")]
+        data = [i.strip() for i in data.split(", ")]
         self.type_[name] = {}
         for i in data:
             if (i == ''):
