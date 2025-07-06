@@ -26,6 +26,7 @@ using f32 = float;
 using f64 = double;
 
 using string = std::string;
+using byte   = std::byte;
 
 template <size_t N>
 using DetermineUnsignedType =
@@ -230,7 +231,6 @@ public:
         return ((T*)mData)+mSize;
     }
 
-
     size_t size() const
     {
         return mSize;
@@ -323,6 +323,23 @@ inline void str(const char* pName, const T& pIe, std::string& pCtx, bool isLast)
     }
 }
 
+inline void str(const char* pName, const std::byte pIe, std::string& pCtx, bool isLast)
+{
+    if (!pName)
+    {
+        pCtx = pCtx + "\"" + std::to_string((unsigned)pIe) + "\"";
+    }
+    else
+    {
+        pCtx = pCtx + "\"" + pName + "\":\"" + std::to_string((unsigned)pIe) + "\"";
+    }
+
+    if (!isLast)
+    {
+        pCtx += ",";
+    }
+}
+
 inline void str(const char* pName, const char pIe, std::string& pCtx, bool isLast)
 {
     if (!pName)
@@ -331,7 +348,7 @@ inline void str(const char* pName, const char pIe, std::string& pCtx, bool isLas
     }
     else
     {
-        pCtx = pCtx + "\"" + pName + "\":\"" + std::to_string(pIe) + "\"";
+        pCtx = pCtx + "\"" + pName + "\":\"" + pIe + "\"";
     }
 
     if (!isLast)
@@ -428,7 +445,6 @@ void str(const char* pName, const vector<T, N>& pIe, std::string& pCtx, bool pIs
         pCtx += ",";
     }
 }
-
 
 template <typename T, size_t N>
 void encode_per(const static_array<T, N>& pIe, per_codec_ctx& pCtx)
