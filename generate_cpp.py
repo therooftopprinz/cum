@@ -350,7 +350,6 @@ class CppGenerator:
         print ("#ifndef " + defname)
         print ("#define " + defname)
         print ("#include \"cum/cum.hpp\"")
-        print ("#include <optional>")
         print ("")
         print ("namespace cum")
         print ("{")
