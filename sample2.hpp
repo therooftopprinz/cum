@@ -7,15 +7,19 @@
 // Type:  ('PhoneNumber', {'dynamic_array': '22'})
 // Type:  ('PhoneNumberArray', {'type': 'PhoneNumber'})
 // Type:  ('PhoneNumberArray', {'dynamic_array': '32'})
+// Type:  ('buffer64', {'type': 'byte'})
+// Type:  ('buffer64', {'buffer': '64'})
 // Sequence:  PersonalPhoneEntry ('String', 'firstName')
 // Sequence:  PersonalPhoneEntry ('OptionalString', 'middleName')
 // Sequence:  PersonalPhoneEntry ('String', 'lastName')
 // Sequence:  PersonalPhoneEntry ('String', 'address')
 // Sequence:  PersonalPhoneEntry ('Gender', 'gender')
 // Sequence:  PersonalPhoneEntry ('PhoneNumberArray', 'phoneNumbers')
+// Sequence:  PersonalPhoneEntry ('buffer64', 'rawData')
 // Sequence:  CorporatePhoneEntry ('String', 'businessName')
 // Sequence:  CorporatePhoneEntry ('String', 'address')
 // Sequence:  CorporatePhoneEntry ('PhoneNumberArray', 'phoneNumbers')
+// Sequence:  CorporatePhoneEntry ('buffer64', 'rawData')
 // Choice:  ('PhoneEntry', 'PersonalPhoneEntry')
 // Choice:  ('PhoneEntry', 'CorporatePhoneEntry')
 // Type:  ('PhoneEntryArray', {'type': 'PhoneEntry'})
@@ -25,7 +29,6 @@
 #ifndef __CUM_MSG_HPP__
 #define __CUM_MSG_HPP__
 #include "cum/cum.hpp"
-#include <optional>
 
 namespace cum
 {
@@ -46,6 +49,7 @@ using String = string;
 using OptionalString = std::optional<string>;
 using PhoneNumber = cum::vector<char, 22>;
 using PhoneNumberArray = cum::vector<PhoneNumber, 32>;
+using buffer64 = cum::buffer<byte, 64>;
 struct PersonalPhoneEntry
 {
     String firstName;
@@ -54,6 +58,7 @@ struct PersonalPhoneEntry
     String address;
     Gender gender;
     PhoneNumberArray phoneNumbers;
+    buffer64 rawData;
 };
 
 struct CorporatePhoneEntry
@@ -61,6 +66,7 @@ struct CorporatePhoneEntry
     String businessName;
     String address;
     PhoneNumberArray phoneNumbers;
+    buffer64 rawData;
 };
 
 using PhoneEntry = std::variant<PersonalPhoneEntry,CorporatePhoneEntry>;
@@ -110,6 +116,7 @@ inline void encode_per(const PersonalPhoneEntry& pIe, cum::per_codec_ctx& pCtx)
     encode_per(pIe.address, pCtx);
     encode_per(pIe.gender, pCtx);
     encode_per(pIe.phoneNumbers, pCtx);
+    encode_per(pIe.rawData, pCtx);
 }
 
 inline void decode_per(PersonalPhoneEntry& pIe, cum::per_codec_ctx& pCtx)
@@ -127,6 +134,7 @@ inline void decode_per(PersonalPhoneEntry& pIe, cum::per_codec_ctx& pCtx)
     decode_per(pIe.address, pCtx);
     decode_per(pIe.gender, pCtx);
     decode_per(pIe.phoneNumbers, pCtx);
+    decode_per(pIe.rawData, pCtx);
 }
 
 inline void str(const char* pName, const PersonalPhoneEntry& pIe, std::string& pCtx, bool pIsLast)
@@ -142,7 +150,7 @@ inline void str(const char* pName, const PersonalPhoneEntry& pIe, std::string& p
     }
     size_t nOptional = 0;
     if (pIe.middleName) nOptional++;
-    size_t nMandatory = 5;
+    size_t nMandatory = 6;
     str("firstName", pIe.firstName, pCtx, !(--nMandatory+nOptional));
     if (pIe.middleName)
     {
@@ -152,6 +160,7 @@ inline void str(const char* pName, const PersonalPhoneEntry& pIe, std::string& p
     str("address", pIe.address, pCtx, !(--nMandatory+nOptional));
     str("gender", pIe.gender, pCtx, !(--nMandatory+nOptional));
     str("phoneNumbers", pIe.phoneNumbers, pCtx, !(--nMandatory+nOptional));
+    str("rawData", pIe.rawData, pCtx, !(--nMandatory+nOptional));
     pCtx = pCtx + "}";
     if (!pIsLast)
     {
@@ -165,6 +174,7 @@ inline void encode_per(const CorporatePhoneEntry& pIe, cum::per_codec_ctx& pCtx)
     encode_per(pIe.businessName, pCtx);
     encode_per(pIe.address, pCtx);
     encode_per(pIe.phoneNumbers, pCtx);
+    encode_per(pIe.rawData, pCtx);
 }
 
 inline void decode_per(CorporatePhoneEntry& pIe, cum::per_codec_ctx& pCtx)
@@ -173,6 +183,7 @@ inline void decode_per(CorporatePhoneEntry& pIe, cum::per_codec_ctx& pCtx)
     decode_per(pIe.businessName, pCtx);
     decode_per(pIe.address, pCtx);
     decode_per(pIe.phoneNumbers, pCtx);
+    decode_per(pIe.rawData, pCtx);
 }
 
 inline void str(const char* pName, const CorporatePhoneEntry& pIe, std::string& pCtx, bool pIsLast)
@@ -187,10 +198,11 @@ inline void str(const char* pName, const CorporatePhoneEntry& pIe, std::string& 
         pCtx = pCtx + "\"" + pName + "\":{";
     }
     size_t nOptional = 0;
-    size_t nMandatory = 3;
+    size_t nMandatory = 4;
     str("businessName", pIe.businessName, pCtx, !(--nMandatory+nOptional));
     str("address", pIe.address, pCtx, !(--nMandatory+nOptional));
     str("phoneNumbers", pIe.phoneNumbers, pCtx, !(--nMandatory+nOptional));
+    str("rawData", pIe.rawData, pCtx, !(--nMandatory+nOptional));
     pCtx = pCtx + "}";
     if (!pIsLast)
     {

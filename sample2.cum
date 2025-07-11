@@ -7,6 +7,7 @@ type String           type=string;
 type OptionalString   type=string, optional;
 type PhoneNumber      type=char, dynamic_array=22;
 type PhoneNumberArray type=PhoneNumber, dynamic_array=32;
+type buffer64         type=byte, buffer=64;
 
 sequence PersonalPhoneEntry {
     String           firstName,
@@ -14,13 +15,15 @@ sequence PersonalPhoneEntry {
     String           lastName,
     String           address,
     Gender           gender,
-    PhoneNumberArray phoneNumbers
+    PhoneNumberArray phoneNumbers,
+    buffer64         rawData
 };
 
 sequence CorporatePhoneEntry {
     String           businessName,
     String           address,
-    PhoneNumberArray phoneNumbers
+    PhoneNumberArray phoneNumbers,
+    buffer64         rawData
 };
 
 choice PhoneEntry {

@@ -69,19 +69,27 @@ struct vector : std::vector<T>
 };
 
 template<typename T, size_t N>
-class static_array
+struct buffer
+{
+    static constexpr size_t  max_size = N;
+    size_t size = 0;
+    T data[N];
+};
+
+template<typename T, size_t N>
+class array
 {
 public:
     static constexpr size_t  max_size = N;
 
-    static_array() = default;
+    array() = default;
 
-    ~static_array()
+    ~array()
     {
         clear();
     }
 
-    static_array(const static_array& pOther)
+    array(const array& pOther)
     {
         for (auto& i: pOther)
         {
@@ -89,7 +97,7 @@ public:
         }
     }
 
-    static_array(static_array&& pOther)
+    array(array&& pOther)
     {
         for (auto& i: pOther)
         {
@@ -98,7 +106,7 @@ public:
         pOther.clear();
     }
 
-    static_array& operator=(const static_array& pOther)
+    array& operator=(const array& pOther)
     {
         clear();
         for (auto& i: pOther)
@@ -108,7 +116,7 @@ public:
         return *this;
     }
 
-    static_array& operator=(static_array&& pOther)
+    array& operator=(array&& pOther)
     {
         clear();
         for (auto& i: pOther)
@@ -128,7 +136,7 @@ public:
         }
     }
 
-    static_array(const std::initializer_list<T>& pList)
+    array(const std::initializer_list<T>& pList)
     {
         for (auto& i : pList)
         {
@@ -136,7 +144,7 @@ public:
         }
     }
 
-    static_array& operator=(const std::initializer_list<T>& pList)
+    array& operator=(const std::initializer_list<T>& pList)
     {
         clear();
         for (auto& i : pList)
@@ -240,7 +248,7 @@ public:
 
 private:
     size_t mSize = 0;
-    uint8_t mData[sizeof(T)*N];
+    byte mData[sizeof(T)*N];
 };
 
 class per_codec_ctx
@@ -282,6 +290,22 @@ inline void encode_per(const uint8_t *pIeOctet, size_t pSize, per_codec_ctx& pCt
 }
 
 inline void decode_per(uint8_t *pIeOctet, size_t pSize, per_codec_ctx& pCtx)
+{
+    if (pSize > pCtx.size())
+        throw std::out_of_range(std::string(__PRETTY_FUNCTION__)+": decode attempted past end of buffer.");
+    std::memcpy(pIeOctet, pCtx.get(), pSize);
+    pCtx.advance(pSize);
+}
+
+inline void encode_per(const byte *pIeOctet, size_t pSize, per_codec_ctx& pCtx)
+{
+    if (pSize > pCtx.size())
+        throw std::out_of_range(std::string(__PRETTY_FUNCTION__)+": not enough encode buffer.");
+    std::memcpy(pCtx.get(), pIeOctet, pSize);
+    pCtx.advance(pSize);
+}
+
+inline void decode_per(byte *pIeOctet, size_t pSize, per_codec_ctx& pCtx)
 {
     if (pSize > pCtx.size())
         throw std::out_of_range(std::string(__PRETTY_FUNCTION__)+": decode attempted past end of buffer.");
@@ -402,7 +426,7 @@ void encode_per(const vector<T,N>& pIe, per_codec_ctx& pCtx)
     if (IndexSize > pCtx.size())
         throw std::out_of_range(std::string(__PRETTY_FUNCTION__)+": not enough encode buffer.");
     size_t size = pIe.size();
-    encode_per((uint8_t*)&size, IndexSize, pCtx);
+    encode_per((byte*)&size, IndexSize, pCtx);
     for (auto& i : pIe)
     {
         encode_per(i, pCtx);
@@ -418,7 +442,7 @@ void decode_per(vector<T, N>& pIe, per_codec_ctx& pCtx)
         throw std::out_of_range(std::string(__PRETTY_FUNCTION__)+": decode attempted past end of buffer.");
     }
     size_t size = 0;
-    decode_per((uint8_t*)&size, IndexSize, pCtx);
+    decode_per((byte*)&size, IndexSize, pCtx);
     for (size_t i=0u; i<size; i++)
     {
         pIe.emplace_back();
@@ -449,13 +473,13 @@ void str(const char* pName, const vector<T, N>& pIe, std::string& pCtx, bool pIs
 }
 
 template <typename T, size_t N>
-void encode_per(const static_array<T, N>& pIe, per_codec_ctx& pCtx)
+void encode_per(const array<T, N>& pIe, per_codec_ctx& pCtx)
 {
     constexpr size_t IndexSize = sizeof(DetermineUnsignedType<N>);
     if (IndexSize > pCtx.size())
         throw std::out_of_range(std::string(__PRETTY_FUNCTION__)+": not enough encode buffer.");
     size_t size = pIe.size();
-    encode_per((uint8_t*)&size, IndexSize, pCtx);
+    encode_per((byte*)&size, IndexSize, pCtx);
     for (auto& i : pIe)
     {
         encode_per(i, pCtx);
@@ -463,7 +487,7 @@ void encode_per(const static_array<T, N>& pIe, per_codec_ctx& pCtx)
 }
 
 template <typename T, size_t N>
-void decode_per(static_array<T, N>& pIe, per_codec_ctx& pCtx)
+void decode_per(array<T, N>& pIe, per_codec_ctx& pCtx)
 {
     constexpr size_t IndexSize = sizeof(DetermineUnsignedType<N>);
     if (IndexSize > pCtx.size())
@@ -471,7 +495,7 @@ void decode_per(static_array<T, N>& pIe, per_codec_ctx& pCtx)
         throw std::out_of_range(std::string(__PRETTY_FUNCTION__)+": decode attempted past end of buffer.");
     }
     size_t size = 0;
-    decode_per((uint8_t*)&size, IndexSize, pCtx);
+    decode_per((byte*)&size, IndexSize, pCtx);
     if (size>N)
     {
         throw std::out_of_range(std::string(__PRETTY_FUNCTION__)+": decode attempted past end of buffer.");
@@ -484,7 +508,7 @@ void decode_per(static_array<T, N>& pIe, per_codec_ctx& pCtx)
 }
 
 template <typename T, size_t N>
-void str(const char* pName, const static_array<T, N>& pIe, std::string& pCtx, bool pIsLast)
+void str(const char* pName, const array<T, N>& pIe, std::string& pCtx, bool pIsLast)
 {
     if (!pName)
     {
@@ -497,6 +521,56 @@ void str(const char* pName, const static_array<T, N>& pIe, std::string& pCtx, bo
     for (size_t i=0; i<pIe.size();i++)
     {
         str(nullptr, pIe[i], pCtx, (i>=pIe.size()-1) ? true : false);
+    }
+    pCtx += "]";
+    if (!pIsLast)
+    {
+        pCtx += ",";
+    }
+}
+
+template <typename T, size_t N>
+void encode_per(const buffer<T, N>& pIe, per_codec_ctx& pCtx)
+{
+    constexpr size_t IndexSize = sizeof(DetermineUnsignedType<N>);
+    if (IndexSize > pCtx.size())
+        throw std::out_of_range(std::string(__PRETTY_FUNCTION__)+": not enough encode buffer.");
+    size_t size = pIe.size;
+    encode_per((byte*)&size, IndexSize, pCtx);
+    encode_per(pIe.data, pIe.size, pCtx);
+}
+
+template <typename T, size_t N>
+void decode_per(buffer<T, N>& pIe, per_codec_ctx& pCtx)
+{
+    constexpr size_t IndexSize = sizeof(DetermineUnsignedType<N>);
+    if (IndexSize > pCtx.size())
+    {
+        throw std::out_of_range(std::string(__PRETTY_FUNCTION__)+": decode attempted past end of buffer.");
+    }
+    pIe.size = 0;
+    decode_per((byte*)&pIe.size, IndexSize, pCtx);
+    if (pIe.size>N)
+    {
+        throw std::out_of_range(std::string(__PRETTY_FUNCTION__)+": decode attempted past end of buffer.");
+    }
+    decode_per(pIe.data, pIe.size, pCtx);
+}
+
+template <typename T, size_t N>
+void str(const char* pName, const buffer<T, N>& pIe, std::string& pCtx, bool pIsLast)
+{
+    if (!pName)
+    {
+        pCtx = pCtx + "[";
+    }
+    else
+    {
+        pCtx = pCtx + "\"" + pName + "\":[";
+    }
+    for (size_t i=0; i<pIe.size; i++)
+    {
+        str(nullptr, ((uint8_t*)pIe.data)[i], pCtx, (i>=pIe.size-1) ? true : false);
     }
     pCtx += "]";
     if (!pIsLast)

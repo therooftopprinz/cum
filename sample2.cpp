@@ -37,6 +37,8 @@ int main()
         pb.phoneEntryArray.emplace_back(CorporatePhoneEntry{});
         auto& phoneEntry = std::get<CorporatePhoneEntry>(pb.phoneEntryArray.back());
 
+        auto& rd = *(new (phoneEntry.rawData.data) uint64_t{42});
+        phoneEntry.rawData.size = sizeof(rd);
         phoneEntry.businessName = "2.businessName";
         phoneEntry.address = "2.address";
         {

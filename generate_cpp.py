@@ -85,10 +85,16 @@ class CppGenerator:
         if "array" in ts:
             arrlen = ts["array"]
 
+        buflen = None
+        if "buffer" in ts:
+            buflen = ts["buffer"]
+
         if veclen is not None:
             type = "cum::vector<{}, {}>".format(type, veclen)
         elif arrlen is not None:
-            type = "cum::static_array<{}, {}>".format(type, arrlen)
+            type = "cum::array<{}, {}>".format(type, arrlen)
+        elif buflen is not None:
+            type = "cum::buffer<{}, {}>".format(type, buflen)
 
         print ("using {} = {};".format(name, typewrap.format(type)))
 
@@ -445,6 +451,7 @@ class ExpressionParser:
         for i in data:
             match = re.match(r"^(.*?)[ \t]+(.*?)$", i)
             if match is None:
+                print ("// Pattern not found in '{}' ".format(i))
                 raise RuntimeError("processing error: " + str(name) + " : " + str(data))
             t = match.group(1)
             n = match.group(2)
