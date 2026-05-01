@@ -1,18 +1,7 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
-import sys
-import re
 import math
 
-filename = sys.argv[1]
-
-file = open(filename,mode='r')
-content = file.read()
-
-content = re.sub(r"//.*[\r]*\n", "", content)
-content = re.sub(r"[\r]*\n", "", content)
-
-expressions = content.split(";")
 
 class CppGenerator:
     def __init__(self, constant, enum, typee, choice, sequence, pass1_expressions):
@@ -375,7 +364,7 @@ class CppGenerator:
                 self.processConstant(n, v)
             elif (t == "enumeration"):
                 self.processEnumeration(n, v)
-            elif (t == "type"):
+            elif (t == "using"):
                 self.processType(n, v)
             elif (t == "choice"):
                 self.processChoice(n, v)
@@ -401,92 +390,3 @@ class CppGenerator:
                 self.processEnumCodec(n, v)
         print ("} // namespace cum")
         print ("#endif //" + defname)
-
-class ExpressionParser:
-    def __init__(self):
-        self.constant_ = {}
-        self.enum_     = {}
-        self.type_     = {}
-        self.choice_   = {}
-        self.sequence_ = {}
-        self.pass1_expressions_ = []
-
-    def processConstant(self, name, data):
-        data = data.lstrip("=").strip()
-        print ("// Constant: ", (name, data))
-        self.constant_[name] = data;
-
-    def processEnumeration(self, name, data):
-        data = data.lstrip("{").rstrip("}")
-        data = [i.strip() for i in data.split(",")]
-        self.enum_[name] = []
-        for i in data:
-            match = re.match(r"^([A-Za-z0-9_]+)\s*(?:=\s*([A-Za-z0-9_\-]+))*", i)
-            i = (match.group(1), match.group(2))
-            self.enum_[name].append(i)
-            print ("// Enumeration: ", (name, i))
-
-    def processType(self, name, data):
-        data = [i.strip() for i in data.split(", ")]
-        self.type_[name] = {}
-        for i in data:
-            if (i == ''):
-                continue
-            match = re.match(r"^([A-Za-z0-9_]+)\s*(?:=\s*(.*?))*$", i)
-            self.type_[name][match.group(1)] = match.group(2)
-            print ("// Type: ", (name, {match.group(1): match.group(2)}))
-
-    def processChoice(self, name, data):
-        data = data.lstrip("{").rstrip("}")
-        data = [i.strip() for i in data.split(",")]
-        self.choice_[name] = []
-        for i in data:
-            self.choice_[name].append(i)
-            print ("// Choice: ", (name, i))
-
-    def processSequence(self, name, data):
-        data = data.lstrip("{").rstrip("}")
-        data = [i.strip() for i in data.split(",")]
-        self.sequence_[name] = []
-        for i in data:
-            match = re.match(r"^(.*?)[ \t]+(.*?)$", i)
-            if match is None:
-                print ("// Pattern not found in '{}' ".format(i))
-                raise RuntimeError("processing error: " + str(name) + " : " + str(data))
-            t = match.group(1)
-            n = match.group(2)
-            self.sequence_[name].append((t, n))
-            print ("// Sequence: ", name, (t, n))
-
-    def pass1(self, expressions):
-        for i in expressions:
-            i = i.strip()
-            match = re.match(r"([A-Za-z0-9_]+)\s+([A-Za-z0-9_]+)\s*(.*)", i);
-            if match is None:
-                continue
-            t = match.group(1).strip()
-            n = match.group(2).strip()
-            v = match.group(3).strip()
-
-            # print ("// Expression: {} | t={} | n={} | v={}".format(i, t, n, v))
-
-            self.pass1_expressions_.append((t,n,v))
-
-            if (t == "constant"):
-                self.processConstant(n, v)
-            elif (t == "enumeration"):
-                self.processEnumeration(n, v)
-            elif (t == "type"):
-                self.processType(n, v)
-            elif (t == "choice"):
-                self.processChoice(n, v)
-            elif (t == "sequence"):
-                self.processSequence(n, v)
-
-    def parse(self, expressions):
-        self.pass1(expressions)
-        generator = CppGenerator(self.constant_, self.enum_, self.type_, self.choice_, self.sequence_, self.pass1_expressions_)
-        generator.generate()
-
-parser = ExpressionParser()
-parser.parse(expressions)

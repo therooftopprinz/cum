@@ -1,0 +1,17 @@
+[build-system]
+requires = ["hatchling>=1.18.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cum"
+version = "0.1.0"
+description = "CUM toolchain (Python tooling package is minimal; runtime lives under target_py3)."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+cum-tools = "cum_tools.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["cum_tools"]

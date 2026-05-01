@@ -1,15 +1,17 @@
-enumeration Gender {
+enumeration Gender
+{
     Male = 10,
     Female
 };
 
-type String           type=string;
-type OptionalString   type=string, optional;
-type PhoneNumber      type=char, dynamic_array=22;
-type PhoneNumberArray type=PhoneNumber, dynamic_array=32;
-type buffer64         type=byte, buffer=64;
+using String           = string;
+using OptionalString   = optional<string>;
+using PhoneNumber      = dynamic<char,22>;
+using PhoneNumberArray = dynamic<PhoneNumber,32>;
+using buffer64         = buffer<byte, 64>;
 
-sequence PersonalPhoneEntry {
+sequence PersonalPhoneEntry
+{
     String           firstName,
     OptionalString   middleName,
     String           lastName,
@@ -19,20 +21,23 @@ sequence PersonalPhoneEntry {
     buffer64         rawData
 };
 
-sequence CorporatePhoneEntry {
+sequence CorporatePhoneEntry
+{
     String           businessName,
     String           address,
     PhoneNumberArray phoneNumbers,
     buffer64         rawData
 };
 
-choice PhoneEntry {
+choice PhoneEntry
+{
     PersonalPhoneEntry,
     CorporatePhoneEntry
 };
 
-type PhoneEntryArray type=PhoneEntry, dynamic_array=255;
+using PhoneEntryArray = dynamic<PhoneEntry, 255>;
 
-sequence PhoneBook {
+sequence PhoneBook
+{
     PhoneEntryArray phoneEntryArray
 };

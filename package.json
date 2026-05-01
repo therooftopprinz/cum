@@ -1,0 +1,10 @@
+{
+  "name": "cum",
+  "private": true,
+  "description": "CUM tooling; JS tests and codegen via npm scripts",
+  "type": "module",
+  "scripts": {
+    "js:codegen": "node target_js/scripts/codegen-sample2.mjs",
+    "js:test": "npm run js:codegen --silent && node target_js/test/sample2.test.mjs"
+  }
+}

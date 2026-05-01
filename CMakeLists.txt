@@ -4,11 +4,13 @@ project(cum VERSION 1.0.35 LANGUAGES CXX)
 add_library(cum INTERFACE)
 
 target_include_directories(cum INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/target_cpp>
     $<INSTALL_INTERFACE:include>)
 
+add_subdirectory(target_cpp/test)
+
 install(
-    DIRECTORY src/cum
+    DIRECTORY target_cpp/cum
     DESTINATION include
     FILES_MATCHING PATTERN "*.hpp")
 

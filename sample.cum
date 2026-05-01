@@ -6,17 +6,17 @@ enumeration Cause {
 constant MAX_REQUEST_SIZE = 16;
 constant MAX_VALUE_SIZE   = 64;
 
-type Key         type=u32;
-type KeyArray    type=Key, dynamic_array=MAX_REQUEST_SIZE;
-type TrId        type=u32, optional;
-type OctetString type=u32, dynamic_array=MAX_VALUE_SIZE;
+using Key         = u32;
+using KeyArray    = dynamic<Key, MAX_REQUEST_SIZE>;
+using TrId        = optional<u32>;
+using OctetString = dynamic<u32, MAX_VALUE_SIZE>;
 
 sequence KeyValue {
     Key key,
     OctetString value
 };
 
-type KeyValueArray type=KeyValue, dynamic_array=MAX_REQUEST_SIZE;
+using KeyValueArray = dynamic<KeyValue, MAX_REQUEST_SIZE>;
 
 sequence SetRequest {
     KeyValueArray data
