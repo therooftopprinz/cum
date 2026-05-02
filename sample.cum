@@ -1,6 +1,6 @@
 enumeration Cause {
-    NOK = -1,
-    OK
+    NOK = -1;
+    OK;
 };
 
 constant MAX_REQUEST_SIZE = 16;
@@ -12,36 +12,36 @@ using TrId        = optional<u32>;
 using OctetString = dynamic<u32, MAX_VALUE_SIZE>;
 
 sequence KeyValue {
-    Key key,
-    OctetString value
+    Key key;
+    OctetString value;
 };
 
 using KeyValueArray = dynamic<KeyValue, MAX_REQUEST_SIZE>;
 
 sequence SetRequest {
-    KeyValueArray data
+    KeyValueArray data;
 };
 
 sequence SetResponse {
-    Cause cause
+    Cause cause;
 };
 
 sequence GetRequest {
-    KeyArray data
+    KeyArray data;
 };
 
 sequence GetResponse {
-    KeyValueArray data
+    KeyValueArray data;
 };
 
 choice PDU_Messages {
-    SetRequest,
-    SetResponse,
-    GetRequest,
-    GetResponse
+    SetRequest;
+    SetResponse;
+    GetRequest;
+    GetResponse;
 };
 
 sequence PDU {
-    TrId trId,
-    PDU_Messages message
+    TrId trId;
+    PDU_Messages message;
 };

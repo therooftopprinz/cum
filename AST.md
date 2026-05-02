@@ -1,6 +1,6 @@
 # Abstract Syntax Tree (AST) for Common Universal Messaging (CUM)
 
-This document specifies a tree representation for CUM definition files (`.cum`). It is aligned with [README.md](README.md) and the constructs recognized by `generator/generate_cpp.py`, but is intentionally **independent** of C++ codegen so parsers, analyzers, and alternate backends can share one shape.
+This document specifies a tree representation for CUM definition files (`.cum`). It is aligned with [README.md](README.md) and the constructs recognized by `generator/cum_to_ast.py`, but is intentionally **independent** of any single backend so parsers, analyzers, and codegen can share one shape.
 
 ---
 
@@ -24,7 +24,7 @@ Document
   declarations: Declaration[]
 ```
 
-A `Document` is the result of parsing one `.cum` file after stripping `//` line comments and normalizing newlines (as the current transpiler does). Order of `declarations` matches source order; forward references are allowed by the language and are not resolved in the AST.
+A `Document` is the result of parsing one `.cum` file after stripping **`//` line comments** and **`/* */` block comments**, then splitting the source into top-level declarations (brace-aware for `enumeration` / `choice` / `sequence`, which end with **`};`**, with `<>`-aware termination for `using`). Order of `declarations` matches source order; forward references are allowed by the language and are not resolved in the AST.
 
 ---
 
@@ -68,8 +68,8 @@ EnumVariant
   value: Literal | null   // null => implicit / next value (language-defined)
 ```
 
-**Surface:** `enumeration Name { A = -1, B, C };`  
-The current implementation stores variant values as strings or `null` for omitted `= value`.
+**Surface:** `enumeration Name { A = -1; B; C };` (commas between variants are also accepted). The closing **`};`** is required.  
+Variant values are strings or `null` for omitted `= value`.
 
 ### 3.3 `UsingDecl` (type alias)
 
@@ -91,7 +91,7 @@ ChoiceDecl
   alternatives: TypeRef[]   // ordered; index is semantically significant for encoding
 ```
 
-**Surface:** `choice Name { T1, T2, ... };`  
+**Surface:** `choice Name { T1; T2; … };` (commas allowed between arms). Closing **`};`** is required.  
 Each element is a reference to a named type (primitive, alias, sequence, choice, enumeration, etc.).
 
 ### 3.5 `SequenceDecl`
@@ -109,7 +109,7 @@ Field
   name: Identifier
 ```
 
-**Surface:** `sequence Name { Type fieldName, ... };`
+**Surface:** `sequence Name { Type fieldName; … };` (commas allowed between fields). Closing **`};`** is required. Splitting respects nested `< … >` so commas inside type arguments are not treated as field separators.
 
 ---
 
@@ -289,17 +289,17 @@ Stable, machine-friendly encoding:
 
 ---
 
-## 9. Mapping from current internal representation
+## 9. Mapping from `cum_to_ast.py`
 
-The current `ExpressionParser` in `generator/generate_cpp.py` splits on `;` and records `(keyword, name, tail)` tuples, then fills:
+The parser in `generator/cum_to_ast.py` splits the file into top-level declaration strings, then records `(keyword, name, tail)` per declaration:
 
-| Parser map / tuple | AST node |
-|--------------------|----------|
-| `constant`, name, `= value` | `ConstantDecl` |
-| `enumeration`, name, `{ ... }` | `EnumerationDecl` with `EnumVariant[]` |
-| `using`, name, `= rhs` | `UsingDecl` with parsed `TypeExpr` |
-| `choice`, name, `{ a, b }` | `ChoiceDecl` |
-| `sequence`, name, `{ type field, ... }` | `SequenceDecl` |
+| Form | AST node |
+|------|----------|
+| `constant`, name, `= value;` | `ConstantDecl` |
+| `enumeration`, name, `{ … };` | `EnumerationDecl` with `EnumVariant[]` |
+| `using`, name, `= TypeExpr;` | `UsingDecl` with parsed `TypeExpr` |
+| `choice`, name, `{ … };` | `ChoiceDecl` |
+| `sequence`, name, `{ … };` | `SequenceDecl` |
 
 ---
 

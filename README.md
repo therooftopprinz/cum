@@ -8,55 +8,50 @@ For the **machine-oriented abstract syntax tree**, see [AST.md](AST.md). It comp
 
 ## Syntax
 
-### Expressions
-An expression is composed of
-```
-(expression)\s+(name)\s*(data);
-```
-Where expression can be:
-- constant
-- enumeration
-- type
-- choice
-- sequence
+### Comments
+- End-of-line: `// …`
+- Block: `/* … */` (may span lines; `/**` doc-style blocks use the same rules)
 
-And name can be `[A-Za-z0-9_]`
+Comments are removed before parsing.
+
+### Declarations
+Each declaration starts with a **keyword** (what kind of thing you are defining) and an **identifier** (its name). After that you write either:
+
+- A **block in curly braces** `{ … }`, finished with **`};`** (a semicolon right after the closing `}`), or  
+- A **single line** that ends with **`;`** (like a simple assignment).
+
+Top-level forms are: `constant`, `enumeration`, `using`, `choice`, `sequence`. **Semicolons inside `{ … }`** still separate enumerators, fields, or choice arms; the parser does not split the file on every `;`—it matches balanced braces for block declarations.
 
 #### Constants
 ```
-constant\s+(name)\s+=\s+(value);
+constant Name = Value;
 ```
-#### Enumerations
+
+#### Enumerations, choices, sequences
 ```
-enumeration\s+(name)\s+{
-    (enumeration)(=(value),)*
+enumeration Name {
+    …
+};
+
+choice Name {
+    …
+};
+
+sequence Name {
+    …
 };
 ```
-#### Types
+
+`enumeration`, `choice`, and `sequence` **must** end with `};` (semicolon after the closing brace), like a C++ `enum class` or `struct` definition.
+
+Between items inside the braces, use **`,` or `;`** as separators (only at depth zero outside nested `< … >` in types).
+
+#### Type aliases
 ```
-using (name) = (type);
-using (name) = (modifier)<(type),(argument)>
+using Name = TypeExpr;
 ```
-**modifier:**
-* `type` - type to alias
-* `optional<type>` - optional modifier
-* `static<type, Size>` - static array (default initialized)
-* `dynamic<type, MaxSize>` - dynamic array (default initialized)
-* `buffer<type,MaxSize>` - buffer array (unitialized)
-#### Choices
-```
-choice Name
-{
-    type,...
-};
-```
-#### Sequence
-```
-sequence Name
-{
-    fields,...
-};
-```
+
+**Generic type modifiers** (in `using` only today): `optional<…>`, `static<…, …>`, `dynamic<…, …>`, `buffer<…, …>` — see [sample2.cum](sample2.cum).
 
 ## Toolchain
 
@@ -69,12 +64,6 @@ Python utilities live under `generator/`. Most scripts expect to be run with `ge
   ```
 
   The emitted JSON follows the schema described in [AST.md](AST.md).
-
-* **C++ header (direct from `.cum`, legacy)** — [`generator/generate_cpp.py`](generator/generate_cpp.py) prints declarations to stdout; run from `generator/` (see note above):
-
-  ```bash
-  cd generator && ./generate_cpp.py ../path/to/file.cum > output.hpp
-  ```
 
 * **C++ header (from AST JSON)** — [`generator/ast_to_cpp.py`](generator/ast_to_cpp.py) reads JSON from stdin or a file argument:
 
@@ -90,19 +79,19 @@ Python utilities live under `generator/`. Most scripts expect to be run with `ge
 
 * **JS tests** — `npm run js:test` (regenerates the sample module and runs `target_js/test/sample2.test.mjs`).
 
-* **Python** — after installing the project (e.g. `pip install -e .`), use the `cum-tools` CLI: `cum-tools codegen sample2` writes generated code under `target_py3/`, and `cum-tools test sample2` regenerates and runs the Golden PER codec check.
+* **Python** — from the repository root, no pip install is required. Run `python -m cum_tools codegen sample2` to regenerate [`target_py3/test/sample2.py`](target_py3/test/sample2.py), or `python -m cum_tools test sample2` to regenerate and run the golden PER codec check. To use the codecs elsewhere, copy the runtime [`target_py3/cum/`](target_py3/cum/) plus your generated modules into your project and import locally (add that directory to `PYTHONPATH` or extend `sys.path`, same idea as the sample test does).
 
 * **C++ consuming the headers** — the CMake package installs/interface target points at [`target_cpp/`](target_cpp/) (see root [`CMakeLists.txt`](CMakeLists.txt)).
 
 * **Wireshark Lua dissector** — [`generator/ast_to_wslua.py`](generator/ast_to_wslua.py) emits Lua that matches the packed PER layout used by JS/Python (`PerCodecCtx`: LE counts and choice index, `int32` enums, optional bitmasks, Latin-1 C strings, counted `dynamic<char,N>` octets). Redirect output into e.g. [`target_wslua/`](target_wslua/) as a personal plugin (Wireshark: *Help → About Wireshark → Folders* → *Personal Lua Plugins*).
 
   ```bash
-  cd generator && ./cum_to_ast.py ../sample2.cum | ./ast_to_wslua.py phonebook > ../target_wslua/sample2.lua
+  cd generator && ./cum_to_ast.py ../sample2.cum | ./ast_to_wslua.py phonebook > ../target_wslua/test/sample2.lua
   ```
 
   Arguments: optional AST JSON path first (otherwise stdin); optional **proto display-filter prefix** (`phonebook` above; default `cum_pdu`). If the first argument is not an existing file, it is treated as that prefix and JSON is read from stdin (same pattern as piping from `cum_to_ast.py`). Uncomment `udp_tbl:add(...)` in the generated script to bind a UDP port, then reload Lua dissectors (*Analyze → Reload Lua Plugins* / `Ctrl+Shift+L`).
 
-For how parser output maps onto AST nodes, see §9 “Mapping from current internal representation” in [AST.md](AST.md).
+For how parser output maps onto AST nodes, see §9 in [AST.md](AST.md).
 
 ## Encoding
 ### Packed Encoding

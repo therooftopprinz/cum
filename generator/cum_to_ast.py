@@ -6,10 +6,161 @@ import re
 import sys
 
 
+def strip_c_style_comments(raw: str) -> str:
+    """Remove // line comments and /* */ block comments (C/C++-style)."""
+    out: list[str] = []
+    i = 0
+    n = len(raw)
+    while i < n:
+        if i + 1 < n:
+            two = raw[i : i + 2]
+            if two == "//":
+                i += 2
+                while i < n and raw[i] != "\n":
+                    i += 1
+                continue
+            if two == "/*":
+                i += 2
+                while i + 1 < n and raw[i : i + 2] != "*/":
+                    i += 1
+                if i + 1 >= n:
+                    raise ValueError("unclosed block comment (missing '*/')")
+                i += 2
+                continue
+        out.append(raw[i])
+        i += 1
+    return "".join(out)
+
+
+def collapse_ws(raw: str) -> str:
+    return re.sub(r"\s+", " ", strip_c_style_comments(raw)).strip()
+
+
+def skip_ws(s: str, i: int) -> int:
+    n = len(s)
+    while i < n and s[i] in " \t\r\n":
+        i += 1
+    return i
+
+
+def read_identifier(s: str, i: int) -> tuple[str, int]:
+    start = i
+    n = len(s)
+    while i < n and (s[i].isalnum() or s[i] == "_"):
+        i += 1
+    if i == start:
+        raise ValueError("expected identifier at {!r}".format(s[max(0, start - 8) : start + 24]))
+    return s[start:i], i
+
+
+def find_matching_brace(s: str, open_idx: int) -> int:
+    if open_idx >= len(s) or s[open_idx] != "{":
+        raise ValueError("expected '{{' at {}".format(open_idx))
+    depth = 1
+    i = open_idx + 1
+    while i < len(s) and depth:
+        c = s[i]
+        if c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+        i += 1
+    if depth != 0:
+        raise ValueError("unbalanced '{{' in {!r}...".format(s[open_idx : open_idx + 40]))
+    return i
+
+
+def scan_type_until_semicolon(s: str, start: int) -> int:
+    """Scan from first char of type expr through terminating ';' (outside nested '<>')."""
+    depth = 0
+    i = start
+    while i < len(s):
+        c = s[i]
+        if c == "<":
+            depth += 1
+        elif c == ">":
+            depth -= 1
+        elif c == ";" and depth == 0:
+            return i + 1
+        i += 1
+    raise ValueError("unterminated using / type (missing ';')")
+
+
+def parse_constant_tail_end(s: str, start: int) -> int:
+    """After 'constant', parse name = value; return index after ';'."""
+    i = skip_ws(s, start)
+    _, i = read_identifier(s, i)
+    i = skip_ws(s, i)
+    if i >= len(s) or s[i] != "=":
+        raise ValueError("constant: expected '='")
+    i += 1
+    while i < len(s) and s[i] != ";":
+        i += 1
+    if i >= len(s):
+        raise ValueError("constant: missing ';'")
+    return i + 1
+
+
+def parse_using_tail_end(s: str, start: int) -> int:
+    """After 'using', parse name = TypeExpr; return index after ';'."""
+    i = skip_ws(s, start)
+    _, i = read_identifier(s, i)
+    i = skip_ws(s, i)
+    if i >= len(s) or s[i] != "=":
+        raise ValueError("using: expected '='")
+    i += 1
+    i = skip_ws(s, i)
+    return scan_type_until_semicolon(s, i)
+
+
+def parse_block_keyword_tail_end(s: str, start: int, kw: str) -> int:
+    """After enumeration|choice|sequence keyword: Name { ... }; (C/C++-style closing)."""
+    i = skip_ws(s, start)
+    _, i = read_identifier(s, i)
+    i = skip_ws(s, i)
+    if i >= len(s) or s[i] != "{":
+        raise ValueError("{}: expected '{{' before body".format(kw))
+    i = find_matching_brace(s, i)
+    i = skip_ws(s, i)
+    if i >= len(s) or s[i] != ";":
+        raise ValueError(kw + ": expected ';' after '}' (close blocks like };)")
+    i += 1
+    return i
+
+
+def split_top_level_declarations(s: str) -> list[str]:
+    decls = []
+    i = 0
+    n = len(s)
+    while i < n:
+        i = skip_ws(s, i)
+        if i >= n:
+            break
+        start = i
+        if s.startswith("constant", i) and (i + 8 == n or not (s[i + 8].isalnum() or s[i + 8] == "_")):
+            i = parse_constant_tail_end(s, i + len("constant"))
+        elif s.startswith("enumeration", i) and (
+            i + 11 == n or not (s[i + 11].isalnum() or s[i + 11] == "_")
+        ):
+            i = parse_block_keyword_tail_end(s, i + len("enumeration"), "enumeration")
+        elif s.startswith("using", i) and (i + 5 == n or not (s[i + 5].isalnum() or s[i + 5] == "_")):
+            i = parse_using_tail_end(s, i + len("using"))
+        elif s.startswith("choice", i) and (i + 6 == n or not (s[i + 6].isalnum() or s[i + 6] == "_")):
+            i = parse_block_keyword_tail_end(s, i + len("choice"), "choice")
+        elif s.startswith("sequence", i) and (i + 8 == n or not (s[i + 8].isalnum() or s[i + 8] == "_")):
+            i = parse_block_keyword_tail_end(s, i + len("sequence"), "sequence")
+        else:
+            raise ValueError(
+                "parse error at {!r}: expected top-level declaration keyword".format(
+                    s[i : min(n, i + 40)]
+                )
+            )
+        decls.append(s[start:i].strip())
+    return decls
+
+
 def preprocess(raw: str) -> list[str]:
-    content = re.sub(r"//.*[\r]*\n", "", raw)
-    content = re.sub(r"[\r]*\n", "", content)
-    return content.split(";")
+    return split_top_level_declarations(collapse_ws(raw))
 
 
 def take_angle_inner(s: str, open_paren: int) -> str:
@@ -91,7 +242,7 @@ def split_declarations(expr: str):
 
 
 def parse_constant(name: str, tail: str):
-    val = tail.lstrip("=").strip()
+    val = tail.lstrip("=").strip().rstrip(";").strip()
     return {
         "kind": "constant",
         "name": name,
@@ -99,23 +250,55 @@ def parse_constant(name: str, tail: str):
     }
 
 
+def extract_braced_inner(tail: str) -> str:
+    """Tail begins with optional ws then '{'; return inner between outermost braces."""
+    t = tail.strip()
+    i = skip_ws(t, 0)
+    if i >= len(t) or t[i] != "{":
+        raise ValueError("expected '{{' after name, got {!r}".format(tail[:80]))
+    end_after = find_matching_brace(t, i)
+    return t[i + 1 : end_after - 1]
+
+
+def split_body_list_items(body: str) -> list[str]:
+    """Split enumeration / choice / sequence body on ',' or ';' outside '<>'."""
+    depth = 0
+    parts = []
+    start = 0
+    body = body.strip()
+    for i, c in enumerate(body):
+        if c == "<":
+            depth += 1
+        elif c == ">":
+            depth -= 1
+            if depth < 0:
+                raise ValueError("invalid type nesting in body")
+        elif depth == 0 and c in ",;":
+            chunk = body[start:i].strip()
+            if chunk:
+                parts.append(chunk)
+            start = i + 1
+    tail = body[start:].strip()
+    if tail:
+        parts.append(tail)
+    return parts
+
+
 def parse_enumeration(name: str, tail: str):
-    body = tail.lstrip("{").rstrip("}").strip()
-    parts = [p.strip() for p in body.split(",") if p.strip()]
+    body = extract_braced_inner(tail).strip()
+    parts = split_body_list_items(body)
     variants = []
     for p in parts:
         if "=" in p:
             n, _, v = p.partition("=")
-            variants.append(
-                {"name": n.strip(), "value": {"raw": v.strip()}}
-            )
+            variants.append({"name": n.strip(), "value": {"raw": v.strip()}})
         else:
             variants.append({"name": p.strip(), "value": None})
     return {"kind": "enumeration", "name": name, "variants": variants}
 
 
 def parse_using(name: str, tail: str):
-    rhs = tail.lstrip("=").strip()
+    rhs = tail.lstrip("=").strip().rstrip(";").strip()
     return {
         "kind": "using",
         "name": name,
@@ -124,8 +307,8 @@ def parse_using(name: str, tail: str):
 
 
 def parse_choice(name: str, tail: str):
-    body = tail.lstrip("{").rstrip("}").strip()
-    alts = [a.strip() for a in body.split(",") if a.strip()]
+    body = extract_braced_inner(tail).strip()
+    alts = split_body_list_items(body)
     return {
         "kind": "choice",
         "name": name,
@@ -134,15 +317,13 @@ def parse_choice(name: str, tail: str):
 
 
 def parse_sequence(name: str, tail: str):
-    body = tail.lstrip("{").rstrip("}").strip()
-    bits = [b.strip() for b in body.split(",") if b.strip()]
+    body = extract_braced_inner(tail).strip()
+    bits = split_body_list_items(body)
     fields = []
     for bit in bits:
         m = re.match(r"^(.*?)[ \t]+([A-Za-z0-9_]+)$", bit)
         if m is None:
-            raise RuntimeError(
-                "sequence {}: cannot parse field {!r}".format(name, bit)
-            )
+            raise RuntimeError("sequence {}: cannot parse field {!r}".format(name, bit))
         type_name = m.group(1).strip()
         field_name = m.group(2).strip()
         fields.append({"type": {"name": type_name}, "name": field_name})

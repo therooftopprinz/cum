@@ -6,6 +6,13 @@ import argparse
 import os
 import subprocess
 import sys
+from pathlib import Path
+
+# Allow `python cum_tools/cli.py` from the repo without pip / PYTHONPATH.
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_r = str(_REPO_ROOT)
+if _r not in sys.path:
+    sys.path.insert(0, _r)
 
 from cum_tools.repo import REPO_ROOT, TARGET_PY3_DIR
 

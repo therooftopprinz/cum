@@ -1,7 +1,7 @@
 enumeration Gender
 {
-    Male = 10,
-    Female
+    Male = 10;
+    Female;
 };
 
 using String           = string;
@@ -12,32 +12,32 @@ using buffer64         = buffer<byte, 64>;
 
 sequence PersonalPhoneEntry
 {
-    String           firstName,
-    OptionalString   middleName,
-    String           lastName,
-    String           address,
-    Gender           gender,
-    PhoneNumberArray phoneNumbers,
-    buffer64         rawData
+    String           firstName;
+    OptionalString   middleName;
+    String           lastName;
+    String           address;
+    Gender           gender;
+    PhoneNumberArray phoneNumbers;
+    buffer64         rawData;
 };
 
 sequence CorporatePhoneEntry
 {
-    String           businessName,
-    String           address,
-    PhoneNumberArray phoneNumbers,
-    buffer64         rawData
+    String           businessName;
+    String           address;
+    PhoneNumberArray phoneNumbers;
+    buffer64         rawData;
 };
 
 choice PhoneEntry
 {
-    PersonalPhoneEntry,
-    CorporatePhoneEntry
+    PersonalPhoneEntry;
+    CorporatePhoneEntry;
 };
 
 using PhoneEntryArray = dynamic<PhoneEntry, 255>;
 
 sequence PhoneBook
 {
-    PhoneEntryArray phoneEntryArray
+    PhoneEntryArray phoneEntryArray;
 };
