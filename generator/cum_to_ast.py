@@ -260,8 +260,8 @@ def extract_braced_inner(tail: str) -> str:
     return t[i + 1 : end_after - 1]
 
 
-def split_body_list_items(body: str) -> list[str]:
-    """Split enumeration / choice / sequence body on ',' or ';' outside '<>'."""
+def split_body_list_items(body: str, *, allow_semicolon: bool = True) -> list[str]:
+    """Split body on ',' and optionally ';' at depth 0 outside nested '<>'."""
     depth = 0
     parts = []
     start = 0
@@ -273,11 +273,12 @@ def split_body_list_items(body: str) -> list[str]:
             depth -= 1
             if depth < 0:
                 raise ValueError("invalid type nesting in body")
-        elif depth == 0 and c in ",;":
-            chunk = body[start:i].strip()
-            if chunk:
-                parts.append(chunk)
-            start = i + 1
+        elif depth == 0:
+            if c == "," or (allow_semicolon and c == ";"):
+                chunk = body[start:i].strip()
+                if chunk:
+                    parts.append(chunk)
+                start = i + 1
     tail = body[start:].strip()
     if tail:
         parts.append(tail)
@@ -286,7 +287,7 @@ def split_body_list_items(body: str) -> list[str]:
 
 def parse_enumeration(name: str, tail: str):
     body = extract_braced_inner(tail).strip()
-    parts = split_body_list_items(body)
+    parts = split_body_list_items(body, allow_semicolon=False)
     variants = []
     for p in parts:
         if "=" in p:
@@ -308,7 +309,7 @@ def parse_using(name: str, tail: str):
 
 def parse_choice(name: str, tail: str):
     body = extract_braced_inner(tail).strip()
-    alts = split_body_list_items(body)
+    alts = split_body_list_items(body, allow_semicolon=False)
     return {
         "kind": "choice",
         "name": name,

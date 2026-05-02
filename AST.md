@@ -68,7 +68,7 @@ EnumVariant
   value: Literal | null   // null => implicit / next value (language-defined)
 ```
 
-**Surface:** `enumeration Name { A = -1; B; C };` (commas between variants are also accepted). The closing **`};`** is required.  
+**Surface:** `enumeration Name { A = -1, B, C };` The closing **`};`** is required. Variants are separated by commas.  
 Variant values are strings or `null` for omitted `= value`.
 
 ### 3.3 `UsingDecl` (type alias)
@@ -91,7 +91,7 @@ ChoiceDecl
   alternatives: TypeRef[]   // ordered; index is semantically significant for encoding
 ```
 
-**Surface:** `choice Name { T1; T2; … };` (commas allowed between arms). Closing **`};`** is required.  
+**Surface:** `choice Name { T1, T2, … };` Closing **`};`** is required. Alternatives are separated by commas.  
 Each element is a reference to a named type (primitive, alias, sequence, choice, enumeration, etc.).
 
 ### 3.5 `SequenceDecl`

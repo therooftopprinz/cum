@@ -1,6 +1,6 @@
 enumeration Cause {
-    NOK = -1;
-    OK;
+    NOK = -1,
+    OK
 };
 
 constant MAX_REQUEST_SIZE = 16;
@@ -35,10 +35,10 @@ sequence GetResponse {
 };
 
 choice PDU_Messages {
-    SetRequest;
-    SetResponse;
-    GetRequest;
-    GetResponse;
+    SetRequest,
+    SetResponse,
+    GetRequest,
+    GetResponse
 };
 
 sequence PDU {

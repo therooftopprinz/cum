@@ -20,7 +20,7 @@ Each declaration starts with a **keyword** (what kind of thing you are defining)
 - A **block in curly braces** `{ … }`, finished with **`};`** (a semicolon right after the closing `}`), or  
 - A **single line** that ends with **`;`** (like a simple assignment).
 
-Top-level forms are: `constant`, `enumeration`, `using`, `choice`, `sequence`. **Semicolons inside `{ … }`** still separate enumerators, fields, or choice arms; the parser does not split the file on every `;`—it matches balanced braces for block declarations.
+Top-level forms are: `constant`, `enumeration`, `using`, `choice`, `sequence`. **Enumeration and choice** list entries are separated by **commas** inside `{ … }`. **Sequence** fields are still separated by **`;` or `,`** (only at depth zero outside nested `< … >` in types). The parser does not split the file on every `;`—it matches balanced braces for block declarations.
 
 #### Constants
 ```
@@ -44,7 +44,7 @@ sequence Name {
 
 `enumeration`, `choice`, and `sequence` **must** end with `};` (semicolon after the closing brace), like a C++ `enum class` or `struct` definition.
 
-Between items inside the braces, use **`,` or `;`** as separators (only at depth zero outside nested `< … >` in types).
+Between **enumeration variants** or **choice alternatives**, use **commas**. Between **sequence fields**, use **`;` or `,`** (only at depth zero outside nested `< … >` in types).
 
 #### Type aliases
 ```
