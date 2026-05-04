@@ -108,8 +108,12 @@ class PyGenerator:
         print("from typing import Optional, TypedDict, Union")
         print("")
         print(
-            "from cum.cum import CodecError, PerCodecCtx, check_optional, set_optional"
+            "from cum.cum import CodecError, PerCodecCtx, check_optional, set_optional, "
+            "read_integral_le, write_integral_le"
         )
+        print("")
+        print("# CUM u8/u16/u32/u64 → Python int (TypedDict annotations)")
+        print("u8 = u16 = u32 = u64 = int")
         print("")
 
     def emit_constant(self, name):
@@ -166,9 +170,12 @@ class PyGenerator:
     def emit_sequence(self, name):
         fields = self.sequence_[name]
         print("class {}(TypedDict):".format(name))
-        for tname, fname in fields:
-            ann = self._field_annotation(tname)
-            print("    {}: {}".format(fname, ann))
+        if not fields:
+            print("    pass  # CUM empty sequence")
+        else:
+            for tname, fname in fields:
+                ann = self._field_annotation(tname)
+                print("    {}: {}".format(fname, ann))
         print("")
 
     def emit_choice_wrappers(self, name):
@@ -203,6 +210,45 @@ class PyGenerator:
             raise RuntimeError("unsupported numeric expr {!r}".format(raw))
         return int(s, 0) if len(s) >= 2 and s[:2].lower() in ("0x", "0o", "0b") else int(s)
 
+    _PRIMITIVE_FIELDS = frozenset({"u8", "u16", "u32", "u64"})
+
+    def _emit_packed_primitive_helpers(self):
+        """PER codecs for naked u8/u16/u32/u64 and Latin-1 C strings (sequence / dynamic<u8>)."""
+        print("# Unsigned fixed-width scalars (LE; match target_cpp on LE hosts)")
+        for n, nbytes in (("u8", 1), ("u16", 2), ("u32", 4), ("u64", 8)):
+            print("def encode_using_{0}(v, ctx: PerCodecCtx) -> None:".format(n))
+            if nbytes == 1:
+                print("    ctx.write_u8(int(v))")
+            else:
+                mod = 1 << (8 * nbytes)
+                print("    if not isinstance(ctx.buf, bytearray):")
+                print("        raise CodecError('encode requires a bytearray backing')")
+                print(
+                    "    vv = int(v) % {}\n".format(mod)
+                    + "    write_integral_le(ctx.buf, ctx.off, vv, {})".format(nbytes)
+                )
+                print("    ctx.off += {}".format(nbytes))
+            print("")
+            print("def decode_using_{0}(ctx: PerCodecCtx) -> int:".format(n))
+            if nbytes == 1:
+                print("    return ctx.read_u8()")
+            else:
+                print("    if ctx.remaining() < {}:".format(nbytes))
+                print("        raise CodecError('decode overrun')")
+                print(
+                    "    v = read_integral_le(ctx.buf, ctx.off, {})".format(nbytes)
+                )
+                print("    ctx.off += {}".format(nbytes))
+                print("    return int(v)")
+            print("")
+
+        print("def encode_using_string(v: str, ctx: PerCodecCtx) -> None:")
+        print("    ctx.encode_c_string_latin1(v)")
+        print("")
+        print("def decode_using_string(ctx: PerCodecCtx) -> str:")
+        print("    return ctx.decode_c_string_latin1()")
+        print("")
+
     def emit_enum_codec(self, name):
         sn = cum_name_to_py_snake(name)
         print(
@@ -211,8 +257,8 @@ class PyGenerator:
         )
         print("")
         print(
-            "def decode_using_{}(ctx: PerCodecCtx) -> int:\n".format(sn)
-            + "    return int(ctx.read_i32le())"
+            "def decode_using_{}(ctx: PerCodecCtx) -> {}:\n".format(sn, name)
+            + "    return {}(int(ctx.read_i32le()))".format(name)
         )
         print("")
 
@@ -290,18 +336,29 @@ class PyGenerator:
             return
 
         if td.get("array") is not None:
+            if elem_type == "u8":
+                mx = self._cum_int_literal(td["array"])
+                print("def encode_using_{}(obj, ctx: PerCodecCtx) -> None:".format(sn))
+                print(
+                    "    if len(obj) != {}: raise CodecError('{!s} length')"
+                    .format(mx, alias)
+                )
+                print("    ctx.write_count({}, len(obj))".format(mx))
+                print("    for it in obj:")
+                print("        encode_using_u8(it, ctx)")
+                print("")
+                print("def decode_using_{}(ctx: PerCodecCtx):".format(sn))
+                print("    n = ctx.read_count({})".format(mx))
+                print("    arr = []")
+                print("    for _ in range(n):")
+                print("        arr.append(decode_using_u8(ctx))")
+                print("    return arr")
+                print("")
+                return
             raise RuntimeError("static arrays are not emitted for {}".format(alias))
 
         if elem_type == "string":
-            print("def encode_using_{}(v: str, ctx: PerCodecCtx) -> None:".format(sn))
-            print("    ctx.encode_c_string_latin1(v)")
-            print("")
-            print(
-                "def decode_using_{}(ctx: PerCodecCtx) -> str:"
-                .format(sn)
-            )
-            print("    return ctx.decode_c_string_latin1()")
-            print("")
+            # Emitted once in _emit_packed_primitive_helpers as encode_using_string.
             return
 
         raise RuntimeError("cannot emit Python codec for using {} (= {!r})".format(alias, td))
@@ -388,6 +445,12 @@ class PyGenerator:
         if tname in self.type_ and self.type_[tname].get("optional"):
             self._encode_optional_field_inline(tname, fa)
             return
+        if tname in self._PRIMITIVE_FIELDS:
+            print("    encode_using_{}({}, ctx)".format(tname, fa))
+            return
+        if tname == "string":
+            print("    encode_using_string({}, ctx)".format(fa))
+            return
         if tname in self.type_:
             self._encode_mandatory_typedef_alias(tname, fa)
         elif tname in self.enum_ or tname in self.sequence_ or tname in self.choice_:
@@ -430,7 +493,11 @@ class PyGenerator:
                 oid += 1
                 continue
             snt = cum_name_to_py_snake(tname)
-            if tname in self.type_ or tname in self.enum_ or tname in self.sequence_ or tname in self.choice_:
+            if tname in self._PRIMITIVE_FIELDS:
+                print("    {} = decode_using_{}(ctx)".format(fa, tname))
+            elif tname == "string":
+                print("    {} = decode_using_string(ctx)".format(fa))
+            elif tname in self.type_ or tname in self.enum_ or tname in self.sequence_ or tname in self.choice_:
                 print("    {} = decode_using_{}(ctx)".format(fa, snt))
             else:
                 raise RuntimeError("{} decode {}".format(fname, tname))
@@ -491,6 +558,8 @@ class PyGenerator:
                 self.emit_choice_wrappers(nm)
 
         print("# --- Packed encoding (PER-byte aligned, enums as i32 LE) ---\n")
+
+        self._emit_packed_primitive_helpers()
 
         for kind, nm, _ in self.pass1_expressions_:
             if kind == "enumeration":

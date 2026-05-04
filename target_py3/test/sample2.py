@@ -5,7 +5,10 @@ from enum import IntEnum
 
 from typing import Optional, TypedDict, Union
 
-from cum.cum import CodecError, PerCodecCtx, check_optional, set_optional
+from cum.cum import CodecError, PerCodecCtx, check_optional, set_optional, read_integral_le, write_integral_le
+
+# CUM u8/u16/u32/u64 → Python int (TypedDict annotations)
+u8 = u16 = u32 = u64 = int
 
 class Gender(IntEnum):
     Male = 10
@@ -66,17 +69,66 @@ class PhoneBook(TypedDict):
 
 # --- Packed encoding (PER-byte aligned, enums as i32 LE) ---
 
-def encode_using_gender(v: int, ctx: PerCodecCtx) -> None:
-    ctx.write_i32le(int(v))
+# Unsigned fixed-width scalars (LE; match target_cpp on LE hosts)
+def encode_using_u8(v, ctx: PerCodecCtx) -> None:
+    ctx.write_u8(int(v))
 
-def decode_using_gender(ctx: PerCodecCtx) -> int:
-    return int(ctx.read_i32le())
+def decode_using_u8(ctx: PerCodecCtx) -> int:
+    return ctx.read_u8()
+
+def encode_using_u16(v, ctx: PerCodecCtx) -> None:
+    if not isinstance(ctx.buf, bytearray):
+        raise CodecError('encode requires a bytearray backing')
+    vv = int(v) % 65536
+    write_integral_le(ctx.buf, ctx.off, vv, 2)
+    ctx.off += 2
+
+def decode_using_u16(ctx: PerCodecCtx) -> int:
+    if ctx.remaining() < 2:
+        raise CodecError('decode overrun')
+    v = read_integral_le(ctx.buf, ctx.off, 2)
+    ctx.off += 2
+    return int(v)
+
+def encode_using_u32(v, ctx: PerCodecCtx) -> None:
+    if not isinstance(ctx.buf, bytearray):
+        raise CodecError('encode requires a bytearray backing')
+    vv = int(v) % 4294967296
+    write_integral_le(ctx.buf, ctx.off, vv, 4)
+    ctx.off += 4
+
+def decode_using_u32(ctx: PerCodecCtx) -> int:
+    if ctx.remaining() < 4:
+        raise CodecError('decode overrun')
+    v = read_integral_le(ctx.buf, ctx.off, 4)
+    ctx.off += 4
+    return int(v)
+
+def encode_using_u64(v, ctx: PerCodecCtx) -> None:
+    if not isinstance(ctx.buf, bytearray):
+        raise CodecError('encode requires a bytearray backing')
+    vv = int(v) % 18446744073709551616
+    write_integral_le(ctx.buf, ctx.off, vv, 8)
+    ctx.off += 8
+
+def decode_using_u64(ctx: PerCodecCtx) -> int:
+    if ctx.remaining() < 8:
+        raise CodecError('decode overrun')
+    v = read_integral_le(ctx.buf, ctx.off, 8)
+    ctx.off += 8
+    return int(v)
 
 def encode_using_string(v: str, ctx: PerCodecCtx) -> None:
     ctx.encode_c_string_latin1(v)
 
 def decode_using_string(ctx: PerCodecCtx) -> str:
     return ctx.decode_c_string_latin1()
+
+def encode_using_gender(v: int, ctx: PerCodecCtx) -> None:
+    ctx.write_i32le(int(v))
+
+def decode_using_gender(ctx: PerCodecCtx) -> Gender:
+    return Gender(int(ctx.read_i32le()))
 
 def encode_using_phone_number(obj, ctx: PerCodecCtx) -> None:
     if len(obj) > 22: raise CodecError('PhoneNumber')
