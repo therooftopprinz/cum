@@ -464,6 +464,14 @@ class PyGenerator:
         sn = cum_name_to_py_snake(name)
         print("# Codec: sequence {}".format(name))
         print("def encode_using_{}(pie, ctx: PerCodecCtx) -> None:".format(sn))
+        if not flds:
+            print("    pass")
+            print("")
+            print("def decode_using_{}(ctx: PerCodecCtx):".format(sn))
+            print("    pie = {}".format("{}"))
+            print("    return pie")
+            print("")
+            return
         if mask_oct is not None:
             print(
                 "    optional_mask = bytearray({})".format(mask_oct)
